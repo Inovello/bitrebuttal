@@ -213,7 +213,10 @@ class Aria2Process:
     def start(self) -> None:
         kwargs: Dict[str, Any] = {}
         if sys.platform == "win32":
-            kwargs["creationflags"] = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
+            # CREATE_NO_WINDOW: the windowed shell has no console, so without it
+            # Windows pops a visible console for the aria2c child.
+            kwargs["creationflags"] = (getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
+                                       | getattr(subprocess, "CREATE_NO_WINDOW", 0))
         else:
             kwargs["start_new_session"] = True
         self.proc = subprocess.Popen(

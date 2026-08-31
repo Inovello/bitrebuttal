@@ -55,7 +55,11 @@ def _launch_cmd(port: int = DEFAULT_PORT, headless: bool = True) -> List[str]:
 
 
 def _run(argv: List[str]) -> subprocess.CompletedProcess:
-    return subprocess.run(argv, capture_output=True, text=True, shell=False)
+    kwargs = {}
+    if sys.platform == "win32":
+        # No console flash when called from the windowed shell (schtasks etc.).
+        kwargs["creationflags"] = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+    return subprocess.run(argv, capture_output=True, text=True, shell=False, **kwargs)
 
 
 # ---------------------------------------------------------------- Windows
