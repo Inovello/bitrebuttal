@@ -4,6 +4,9 @@ on:
   push:
     tags:
       - 'v*'
+  # Manual runs build + smoke the binaries without cutting a tag; the upload
+  # step below is tag-gated so a dispatch run never touches a release.
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -44,6 +47,71 @@ jobs:
       - name: Build with PyInstaller
         run: pyinstaller --clean --noconfirm bitrebuttal.spec
 
+      # The smoke tests below actually start the built server, so aria2c has to
+      # be on PATH - Engine.start() preflights for it and refuses without it.
+      - name: Install aria2 (smoke-test dependency)
+        shell: bash
+        run: |
+          set -euo pipefail
+          case "${{ runner.os }}" in
+            macOS)   brew install aria2 ;;
+            Linux)   sudo apt-get update && sudo apt-get install -y aria2 ;;
+            Windows) choco install aria2 -y ;;
+          esac
+          aria2c --version
+
+      - name: Smoke test (macOS)
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          set -uo pipefail
+          dist/BitRebuttal.app/Contents/MacOS/BitRebuttal serve --headless --port 7999 &
+          srv=$!
+          ok=0
+          for _ in $(seq 1 40); do
+            if curl -fsS http://127.0.0.1:7999/api/status -o status.json; then ok=1; break; fi
+            sleep 1
+          done
+          kill "$srv" 2>/dev/null || true
+          if [ "$ok" -ne 1 ]; then echo "app binary never answered /api/status"; exit 1; fi
+          grep -q '"backend"' status.json || { echo "unexpected /api/status body:"; cat status.json; exit 1; }
+          ./dist/bitrebuttal-cli --version
+
+      - name: Smoke test (Windows)
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          set -uo pipefail
+          # Windowed exe: no console, but it still runs and serves.
+          dist/BitRebuttal.exe serve --headless --port 7999 &
+          srv=$!
+          ok=0
+          for _ in $(seq 1 40); do
+            if curl -fsS http://127.0.0.1:7999/api/status -o status.json; then ok=1; break; fi
+            sleep 1
+          done
+          kill "$srv" 2>/dev/null || true
+          if [ "$ok" -ne 1 ]; then echo "app binary never answered /api/status"; exit 1; fi
+          grep -q '"backend"' status.json || { echo "unexpected /api/status body:"; cat status.json; exit 1; }
+          ./dist/bitrebuttal-cli.exe --version
+
+      - name: Smoke test (Linux)
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          set -uo pipefail
+          dist/BitRebuttal serve --headless --port 7999 &
+          srv=$!
+          ok=0
+          for _ in $(seq 1 40); do
+            if curl -fsS http://127.0.0.1:7999/api/status -o status.json; then ok=1; break; fi
+            sleep 1
+          done
+          kill "$srv" 2>/dev/null || true
+          if [ "$ok" -ne 1 ]; then echo "app binary never answered /api/status"; exit 1; fi
+          grep -q '"backend"' status.json || { echo "unexpected /api/status body:"; cat status.json; exit 1; }
+          dist/BitRebuttal --version
+
       - name: Rename artifacts (Windows)
         if: runner.os == 'Windows'
         shell: bash
@@ -64,6 +132,7 @@ jobs:
         run: mv dist/BitRebuttal "dist/${{ matrix.artifact }}"
 
       - name: Upload to release
+        if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
           files: ${{ matrix.files }}
