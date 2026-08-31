@@ -1,4 +1,4 @@
-"""Bit Rebuttal CLI: serve | add | status | service.
+"""Bit Rebuttal CLI: serve | gui | add | status | service.
 
 ``add`` and ``status`` work headless by talking to a running instance's HTTP API,
 found through the ``portfile`` the engine writes into the data dir on start.
@@ -146,6 +146,13 @@ def cmd_serve(args: argparse.Namespace) -> int:
     return int(run(port=args.port, headless=args.headless) or 0)
 
 
+def cmd_gui(args: argparse.Namespace) -> int:
+    logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO,
+                        format="%(asctime)s %(levelname)-7s %(name)s: %(message)s")
+    from . import gui  # lazy: pulls pywebview in only when the shell is asked for
+    return int(gui.run(port=args.port) or 0)
+
+
 def cmd_add(args: argparse.Namespace) -> int:
     store = Store()
     port = _instance(store)
@@ -220,6 +227,10 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--headless", action="store_true", help="do not open a browser window")
     s.add_argument("--port", type=int, default=DEFAULT_PORT, help="HTTP port (default 7451)")
     s.set_defaults(func=cmd_serve)
+
+    g = sub.add_parser("gui", help="run the native desktop shell (pywebview window)")
+    g.add_argument("--port", type=int, default=DEFAULT_PORT, help="HTTP port (default 7451)")
+    g.set_defaults(func=cmd_gui)
 
     a = sub.add_parser("add", help="queue a download on a running instance")
     a.add_argument("url", help="HF repo id (org/repo[@rev]), HF URL, or any direct URL")

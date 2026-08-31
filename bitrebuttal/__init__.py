@@ -13,7 +13,7 @@ Public surface used by the CLI and (later) server.py:
     engine.stop()
 """
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 APP_NAME = "bitrebuttal"
 DISPLAY_NAME = "Bit Rebuttal"
 

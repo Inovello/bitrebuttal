@@ -22,11 +22,13 @@ Three layers, each catching what the one below it misses. The outermost layer is
 
 ### Option 1 - download the app
 
-Grab the binary for your OS from the [GitHub releases page](https://github.com/Inovello/bitrebuttal/releases). The binary is a single file, no installer:
+Grab the binary for your OS from the [GitHub releases page](https://github.com/Inovello/bitrebuttal/releases). No installer:
 
-- **Windows:** run `BitRebuttal-windows-x64.exe`. Double-clicking it serves the UI and opens the browser.
-- **macOS:** `chmod +x` the binary. On first run, right-click the app and choose **Open** (or run `xattr -d com.apple.quarantine <file>`) — the binary is unsigned, so Gatekeeper asks the first time.
+- **Windows:** run `BitRebuttal-windows-x64.exe` — it opens its own app window (WebView2, preinstalled on Windows 11; on Windows 10 install the "WebView2 Runtime" from Microsoft if the window fails).
+- **macOS:** unzip `BitRebuttal-macos-*.zip`, then right-click the app and choose **Open** on first run — the app is unsigned, so Gatekeeper asks the first time.
 - **Linux:** `chmod +x` the binary and run it.
+
+The `-cli` binaries (`BitRebuttal-cli-*`) are the full console CLI. `bitrebuttal serve` (or the CLI's `serve`) still gives the plain browser UI.
 
 On every platform you still need `aria2c` on your PATH: `winget install aria2` (Windows), `brew install aria2` (macOS), or `sudo apt install aria2` (Linux).
 
