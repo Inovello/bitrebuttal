@@ -14,14 +14,14 @@ import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-TASK_NAME = "LongRebuttal"
-UNIT_NAME = "longrebuttal.service"
-LAUNCHD_LABEL = "com.longrebuttal.serve"
+TASK_NAME = "BitRebuttal"
+UNIT_NAME = "bitrebuttal.service"
+LAUNCHD_LABEL = "com.bitrebuttal.serve"
 DEFAULT_PORT = 7451
 
 UNIT_TEMPLATE = """\
 [Unit]
-Description=Long Rebuttal - resilient download supervisor
+Description=Bit Rebuttal - resilient download supervisor
 After=network-online.target
 Wants=network-online.target
 
@@ -46,7 +46,7 @@ def _launch_cmd(port: int = DEFAULT_PORT, headless: bool = True) -> List[str]:
     if getattr(sys, "frozen", False):
         cmd = [sys.executable, "serve"]
     else:
-        cmd = [_python(), "-m", "longrebuttal", "serve"]
+        cmd = [_python(), "-m", "bitrebuttal", "serve"]
     if headless:
         cmd.append("--headless")
     if port and port != DEFAULT_PORT:
@@ -87,7 +87,7 @@ def _win_install(port: int) -> Dict[str, Any]:
                 "error": (res.stderr or res.stdout or "schtasks failed").strip(),
                 "command": manual}
     check = _run([exe, "/Query", "/TN", TASK_NAME, "/FO", "LIST", "/V"])
-    if "longrebuttal" not in (check.stdout or "").lower():
+    if "bitrebuttal" not in (check.stdout or "").lower():
         return {"installed": False,
                 "error": "schtasks accepted the task but did not record the command line "
                          "(quoting of the interpreter path). Create it manually:",
@@ -194,7 +194,7 @@ def _launchctl() -> Optional[str]:
 
 def _launchd_plist(cmd: List[str]) -> str:
     """The LaunchAgent XML, built with plistlib (pure - no filesystem access)."""
-    log = str(Path.home() / "Library" / "Logs" / "longrebuttal.log")
+    log = str(Path.home() / "Library" / "Logs" / "bitrebuttal.log")
     pl = {
         "Label": LAUNCHD_LABEL,
         "ProgramArguments": cmd,

@@ -1,10 +1,10 @@
 # -*- mode: python ; coding: utf-8 -*-
-"""PyInstaller spec: Long Rebuttal as a single executable."""
+"""PyInstaller spec: Bit Rebuttal as a single executable."""
 
 a = Analysis(
     ['packaging/pyi_entry.py'],
     pathex=[],
-    datas=[('longrebuttal/static', 'longrebuttal/static')],
+    datas=[('bitrebuttal/static', 'bitrebuttal/static')],
     hiddenimports=[
         'uvicorn.logging',
         'uvicorn.loops',
@@ -32,7 +32,7 @@ exe = EXE(
     a.binaries,
     a.datas,
     [],
-    name='LongRebuttal',
+    name='BitRebuttal',
     debug=False,
     strip=False,
     upx=False,

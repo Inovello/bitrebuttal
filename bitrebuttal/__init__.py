@@ -1,8 +1,8 @@
-"""Long Rebuttal - resilient aria2c-based downloader for huge model files.
+"""Bit Rebuttal - resilient aria2c-based downloader for huge model files.
 
 Public surface used by the CLI and (later) server.py:
 
-    from longrebuttal.engine import Engine
+    from bitrebuttal.engine import Engine
     engine = Engine()               # optional: data_dir=, poll_interval=
     engine.start(port=7451)         # writes the portfile, resumes unfinished jobs
     engine.status_payload()         # the full GET /api/status dict
@@ -14,7 +14,7 @@ Public surface used by the CLI and (later) server.py:
 """
 
 __version__ = "0.1.0"
-APP_NAME = "longrebuttal"
-DISPLAY_NAME = "Long Rebuttal"
+APP_NAME = "bitrebuttal"
+DISPLAY_NAME = "Bit Rebuttal"
 
 __all__ = ["__version__", "APP_NAME", "DISPLAY_NAME"]

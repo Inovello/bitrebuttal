@@ -1,8 +1,8 @@
-# Long Rebuttal — Architecture Plan
+# Bit Rebuttal — Architecture Plan
 
-*Name: **Long Rebuttal** — display name "Long Rebuttal"; package/CLI name `longrebuttal` (no space).*
+*Name: **Bit Rebuttal** — display name "Bit Rebuttal"; package/CLI name `bitrebuttal` (no space).*
 
-**One-liner:** Paste a link (HuggingFace repo or any direct URL). Long Rebuttal downloads it with aria2c under a supervision layer that survives stalls, expired signed URLs, process death, and full host reboots — and verifies the bytes at the end. Fail loudly, never skip.
+**One-liner:** Paste a link (HuggingFace repo or any direct URL). Bit Rebuttal downloads it with aria2c under a supervision layer that survives stalls, expired signed URLs, process death, and full host reboots — and verifies the bytes at the end. Fail loudly, never skip.
 
 This generalizes the proven setup in `aria2c-resilient-downloader.md` (169 GB, 13 unattended recoveries, 0 bytes lost). The architecture is inherited from there; read §2 and §5 of that doc before building. **Every rule in that doc's §5 is load-bearing.**
 
@@ -36,7 +36,7 @@ This generalizes the proven setup in `aria2c-resilient-downloader.md` (169 GB, 1
 Package layout:
 
 ```
-longrebuttal/
+bitrebuttal/
   __main__.py        # CLI entry: serve | add | status | service
   server.py          # FastAPI app + static files
   engine.py          # supervisor loop + watchdog (the core; port of the bash control flow)
@@ -52,7 +52,7 @@ longrebuttal/
 
 ## 3. Core engine (inherited design — do not deviate)
 
-**One aria2c child process** per Long Rebuttal instance, spawned by the engine with a random localhost RPC port and random secret (fixes the single-instance collision from field notes §7.4). All files from all jobs go into its queue, `--max-concurrent-downloads=1` (sequential = simpler progress, less seek).
+**One aria2c child process** per Bit Rebuttal instance, spawned by the engine with a random localhost RPC port and random secret (fixes the single-instance collision from field notes §7.4). All files from all jobs go into its queue, `--max-concurrent-downloads=1` (sequential = simpler progress, less seek).
 
 **Supervisor loop** (direct port of the bash reference in field notes §9):
 
@@ -102,7 +102,7 @@ After each file finishes (no `.aria2` control file remains):
 - SHA256 == manifest hash when known (stream the file, show "verifying…" state in UI — a 50 GB hash takes minutes);
 - mismatch → delete nothing, mark file `CORRUPT`, job `FAILED`, surface loudly.
 
-Completion marker: `.longrebuttal-complete` JSON in dest dir (timestamp, per-file size+hash results).
+Completion marker: `.bitrebuttal-complete` JSON in dest dir (timestamp, per-file size+hash results).
 
 ---
 
@@ -124,9 +124,9 @@ Progress numbers come from aria2 RPC `tellStatus` (`completedLength`), never fil
 
 ## 7. Reboot survival (`service.py`)
 
-`longrebuttal service install|uninstall|status`
+`bitrebuttal service install|uninstall|status`
 - **Linux:** write a user-scoped systemd unit (`~/.config/systemd/user/` with lingering, or system unit with sudo): `Restart=on-failure`, `RestartSec=20`, `TimeoutStopSec=45`, `KillMode=control-group`, `WantedBy=default.target`. These exact values are from the proven unit — keep them.
-- **Windows:** `schtasks /create /sc onstart` running `longrebuttal serve --headless` (plus a logon trigger for non-admin). Document NSSM as the more robust alternative but don't depend on it.
+- **Windows:** `schtasks /create /sc onstart` running `bitrebuttal serve --headless` (plus a logon trigger for non-admin). Document NSSM as the more robust alternative but don't depend on it.
 
 On startup the engine reads `state.json`, finds unfinished jobs, and resumes automatically — no user action (this is the "PC turns back on and it just continues" requirement; `.aria2` control files make resume byte-exact).
 
@@ -151,4 +151,4 @@ Each phase is independently shippable; stop after any of them and the tool still
 - [ ] Throttle link to ~20 KB/s → watchdog kills+relaunches, no silent sit-forever
 - [ ] Corrupt one byte of a finished file, re-verify → job FAILED loudly, file marked CORRUPT
 - [ ] Slow-but-alive link (per-connection < any floor) → **no** connections killed, no shards abandoned
-- [ ] Two Long Rebuttal instances on one box → no port collision
+- [ ] Two Bit Rebuttal instances on one box → no port collision

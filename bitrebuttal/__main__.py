@@ -1,4 +1,4 @@
-"""Long Rebuttal CLI: serve | add | status | service.
+"""Bit Rebuttal CLI: serve | add | status | service.
 
 ``add`` and ``status`` work headless by talking to a running instance's HTTP API,
 found through the ``portfile`` the engine writes into the data dir on start.
@@ -16,7 +16,7 @@ from . import DISPLAY_NAME, __version__
 from .state import Store
 
 DEFAULT_PORT = 7451
-NO_INSTANCE = ("no running instance - start `longrebuttal serve` first")
+NO_INSTANCE = ("no running instance - start `bitrebuttal serve` first")
 
 
 # ---------------------------------------------------------------- HTTP helpers
@@ -134,13 +134,13 @@ def cmd_serve(args: argparse.Namespace) -> int:
     try:
         from . import server  # noqa: F401  (built by the server pass)
     except ImportError:
-        print("server module not built yet - `longrebuttal serve` needs longrebuttal/server.py.\n"
-              "The engine itself is ready: from longrebuttal.engine import Engine; "
+        print("server module not built yet - `bitrebuttal serve` needs bitrebuttal/server.py.\n"
+              "The engine itself is ready: from bitrebuttal.engine import Engine; "
               "Engine().start(port).")
         return 1
     run = getattr(server, "run", None)
     if run is None:
-        print("longrebuttal/server.py exists but exposes no run(port=..., headless=...) entry "
+        print("bitrebuttal/server.py exists but exposes no run(port=..., headless=...) entry "
               "point.")
         return 1
     return int(run(port=args.port, headless=args.headless) or 0)
@@ -210,7 +210,7 @@ def cmd_service(args: argparse.Namespace) -> int:
 
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
-        prog="longrebuttal",
+        prog="bitrebuttal",
         description=f"{DISPLAY_NAME} - resilient aria2c downloader for huge model files.")
     p.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     p.add_argument("-v", "--verbose", action="store_true", help="debug logging")

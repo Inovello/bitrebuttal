@@ -1,4 +1,4 @@
-/* Long Rebuttal — frontend.
+/* Bit Rebuttal — frontend.
  *
  * Plain ES5+/ES2017 in one IIFE. No framework, no build step, no CDN.
  * Served by FastAPI StaticFiles at /, or opened straight off disk with ?mock=1.

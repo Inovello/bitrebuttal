@@ -1,4 +1,4 @@
-"""Long Rebuttal smoke tests.
+"""Bit Rebuttal smoke tests.
 
 Run either way:
     pytest tests/test_smoke.py -v
@@ -15,11 +15,11 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from longrebuttal.engine import (STALL_FLOOR_BPS, adaptive_threshold, elapsed_label,  # noqa: E402
+from bitrebuttal.engine import (STALL_FLOOR_BPS, adaptive_threshold, elapsed_label,  # noqa: E402
                                  uptime_label)
-from longrebuttal.resolve import ResolveError, parse_input, resolve  # noqa: E402
-from longrebuttal.state import FileEntry, Job, Store, atomic_write_json, read_json  # noqa: E402
-from longrebuttal.verify import sha256_file, verify_file  # noqa: E402
+from bitrebuttal.resolve import ResolveError, parse_input, resolve  # noqa: E402
+from bitrebuttal.state import FileEntry, Job, Store, atomic_write_json, read_json  # noqa: E402
+from bitrebuttal.verify import sha256_file, verify_file  # noqa: E402
 
 TINY_REPO = "hf-internal-testing/tiny-random-gpt2"
 

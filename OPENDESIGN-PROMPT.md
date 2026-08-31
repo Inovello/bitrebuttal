@@ -2,7 +2,7 @@
 
 ---
 
-Design and build the complete frontend for **Long Rebuttal**, a local web app for downloading huge AI model files (tens to hundreds of gigabytes) without babysitting them. The backend supervises aria2c downloads, auto-recovers from stalls, expired links, crashes, and even full PC reboots, and verifies files with SHA256 when done. Your job is ONLY the frontend. A separate backend team will wire it to a real API later.
+Design and build the complete frontend for **Bit Rebuttal**, a local web app for downloading huge AI model files (tens to hundreds of gigabytes) without babysitting them. The backend supervises aria2c downloads, auto-recovers from stalls, expired links, crashes, and even full PC reboots, and verifies files with SHA256 when done. Your job is ONLY the frontend. A separate backend team will wire it to a real API later.
 
 ## Hard technical constraints
 
@@ -20,7 +20,7 @@ Dark theme only. Think clean mission-control / terminal aesthetic: near-black ba
 
 ### 1. Dashboard (default view)
 
-- **Top bar:** app name "Long Rebuttal", tagline "Downloads that finish.", a status dot showing backend health, gear icon → Settings view.
+- **Top bar:** app name "Bit Rebuttal", tagline "Downloads that finish.", a status dot showing backend health, gear icon → Settings view.
 - **Add-download panel:** one large text input, placeholder "Paste a HuggingFace repo or direct file URL…", button "Resolve". Below it, three swappable states:
   - *resolving:* spinner + "Contacting server…"
   - *resolved:* a **file picker card** — repo name, list of files with checkboxes, each row: filename (monospace), size, small "SHA256 ✓ available" tag when a hash exists. Footer: "N files selected — 87.3 GB total", free-disk-space line ("412 GB free on D:"), destination folder path with a "change" affordance, and a big "Start download" button. If selected size exceeds free space, show a red error line and disable the button.

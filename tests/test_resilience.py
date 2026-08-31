@@ -1,7 +1,7 @@
 """Kill aria2c mid-transfer and prove the supervisor recovers byte-exact.
 
 Opt-in (it moves ~150 MB):
-    LONGREBUTTAL_RESILIENCE=1 python tests/test_resilience.py
+    BITREBUTTAL_RESILIENCE=1 python tests/test_resilience.py
 
 Asserts: the child is hard-killed mid-download, the supervisor notices, relaunches
 with the ORIGINAL url (fresh signed redirect), resume starts at >= the kill offset
@@ -19,8 +19,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from longrebuttal.engine import Engine  # noqa: E402
-from longrebuttal.verify import read_completion_marker  # noqa: E402
+from bitrebuttal.engine import Engine  # noqa: E402
+from bitrebuttal.verify import read_completion_marker  # noqa: E402
 
 URL = "https://huggingface.co/openai/whisper-tiny/resolve/main/pytorch_model.bin"
 KILL_AFTER_BYTES = 4 * 1024 * 1024
@@ -41,14 +41,14 @@ def skip(msg: str):
 
 
 def test_kill_aria2c_mid_transfer():
-    if os.environ.get("LONGREBUTTAL_RESILIENCE") != "1":
-        skip("set LONGREBUTTAL_RESILIENCE=1 to run (downloads ~150 MB)")
+    if os.environ.get("BITREBUTTAL_RESILIENCE") != "1":
+        skip("set BITREBUTTAL_RESILIENCE=1 to run (downloads ~150 MB)")
         return
     if not shutil.which("aria2c"):
         skip("aria2c not on PATH")
         return
 
-    base = os.environ.get("LONGREBUTTAL_TEST_DIR") or os.environ.get("TEMP") or "/tmp"
+    base = os.environ.get("BITREBUTTAL_TEST_DIR") or os.environ.get("TEMP") or "/tmp"
     root = Path(base) / f"lr-resilience-{int(time.time())}"
     engine = Engine(data_dir=root / "data", poll_interval=2.0, relaunch_backoff=5.0)
     engine.start()

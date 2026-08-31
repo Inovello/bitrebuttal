@@ -1,4 +1,4 @@
-/* Long Rebuttal — mock backend payload.
+/* Bit Rebuttal — mock backend payload.
    Swap this file for fetch() calls; shapes below are the contract. */
 (function () {
   const GB = 1e9;

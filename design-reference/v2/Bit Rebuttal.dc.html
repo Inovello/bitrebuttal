@@ -1,0 +1,786 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="" />
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+<style>
+  html { --nh: 155; --nc: 0.009; --ah: 295; --sh: 160; --wh: 15; }
+  html, body { margin: 0; padding: 0; background: oklch(0.168 var(--nc) var(--nh)); }
+  * { box-sizing: border-box; }
+  ::selection { background: oklch(0.70 0.17 var(--ah) / 0.35); }
+  a { color: oklch(0.74 0.15 var(--ah)); text-decoration: none; }
+  a:hover { color: oklch(0.84 0.13 var(--ah)); }
+  input, button { font: inherit; color: inherit; }
+  input:focus { outline: none; }
+  @keyframes lr-pulse { 0%,100% { opacity: 1 } 50% { opacity: 0.25 } }
+  @keyframes lr-bob { 0%, 100% { transform: translateY(0) } 50% { transform: translateY(-2px) } }
+  @keyframes lr-drift { from { background-position: 0 0 } to { background-position: 18px 0 } }
+</style>
+</helmet>
+
+<div style="display: grid; grid-template-columns: 236px 1fr; min-height: 100vh; min-width: 1280px; background: oklch(0.168 var(--nc) var(--nh)); color: oklch(0.92 var(--nc) var(--nh)); font-family: Archivo, sans-serif; font-size: 14px;">
+
+  <aside style="display: flex; flex-direction: column; justify-content: space-between; border-right: 1px solid oklch(0.27 var(--nc) var(--nh)); background: oklch(0.192 var(--nc) var(--nh)); position: sticky; top: 0; height: 100vh;">
+    <div>
+      <div style="padding: 22px 20px 20px; border-bottom: 1px solid oklch(0.27 var(--nc) var(--nh));">
+        <div style="display: flex; align-items: center; gap: 9px;">
+          <div style="width: 9px; height: 9px; background: oklch(0.70 0.17 var(--ah)); animation: lr-pulse 2.4s ease-in-out infinite;"></div>
+          <div style="font-size: 13px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase;">Bit Rebuttal</div>
+        </div>
+        <div style="margin-top: 7px; margin-left: 18px; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: oklch(0.56 var(--nc) var(--nh));">Downloads that finish</div>
+      </div>
+
+      <nav style="display: flex; flex-direction: column; padding: 14px 0;">
+        <div onClick="{{ goDash }}" style="{{ navDash }}">
+          <span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; opacity: 0.5;">01</span>
+          <span>Dashboard</span>
+          <span style="{{ dashCountStyle }}">{{ activeCount }}</span>
+        </div>
+        <div onClick="{{ goLib }}" style="{{ navLib }}">
+          <span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; opacity: 0.5;">02</span>
+          <span>Library</span>
+        </div>
+        <div onClick="{{ goSet }}" style="{{ navSet }}">
+          <span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; opacity: 0.5;">03</span>
+          <span>Settings</span>
+        </div>
+      </nav>
+
+      <div style="margin: 8px 20px 0; padding-top: 18px; border-top: 1px solid oklch(0.24 var(--nc) var(--nh));">
+        <div style="font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.16em; color: oklch(0.52 var(--nc) var(--nh)); text-transform: uppercase;">Bandwidth cap</div>
+        <div style="display: flex; align-items: baseline; gap: 6px; margin-top: 10px;">
+          <span style="font-family: 'JetBrains Mono', monospace; font-size: 20px; font-weight: 500; color: oklch(0.92 var(--nc) var(--nh));">{{ capLabel }}</span>
+          <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: oklch(0.52 var(--nc) var(--nh));">MB/s</span>
+        </div>
+        <input type="range" min="10" max="120" step="5" value="{{ cap }}" onChange="{{ setCap }}" style="width: 100%; margin-top: 10px; accent-color: oklch(0.70 0.17 var(--ah)); background: transparent;" />
+        <div style="display: flex; justify-content: space-between; font-family: 'JetBrains Mono', monospace; font-size: 10px; color: oklch(0.45 var(--nc) var(--nh)); margin-top: 2px;">
+          <span>10</span>
+          <span>Uncapped</span>
+        </div>
+      </div>
+
+    </div>
+
+    <div style="padding: 18px 20px 20px; border-top: 1px solid oklch(0.27 var(--nc) var(--nh));">
+      <div style="display: flex; align-items: flex-end; gap: 2px; height: 22px; margin-bottom: 12px;">
+        <sc-for list="{{ heartbars }}" as="b" hint-placeholder-count="14">
+          <div style="{{ b.style }}"></div>
+        </sc-for>
+      </div>
+      <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px;">
+        <div>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <div style="width: 6px; height: 6px; border-radius: 50%; background: oklch(0.75 0.15 var(--sh));"></div>
+            <span style="font-size: 12px; color: oklch(0.80 var(--nc) var(--nh));">Supervisor watching</span>
+          </div>
+          <div style="font-family: 'JetBrains Mono', monospace; font-size: 10px; color: oklch(0.48 var(--nc) var(--nh)); margin-top: 6px; margin-left: 14px;">Heartbeat {{ hb }}s</div>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(8, 3px); gap: 1px; animation: lr-bob 2.8s steps(2, end) infinite;">
+          <sc-for list="{{ face }}" as="p" hint-placeholder-count="64">
+            <div style="{{ p.style }}"></div>
+          </sc-for>
+        </div>
+      </div>
+      <div style="font-family: 'JetBrains Mono', monospace; font-size: 10px; color: oklch(0.66 0.14 var(--wh)); margin-top: 4px; margin-left: 14px;">Boot service not installed</div>
+    </div>
+  </aside>
+
+  <main style="min-width: 0;">
+
+    <header style="display: grid; grid-template-columns: 1.25fr 1.5fr 1.15fr 0.9fr; border-bottom: 1px solid oklch(0.27 var(--nc) var(--nh)); background: oklch(0.185 var(--nc) var(--nh));">
+      <div style="padding: 18px 24px; border-right: 1px solid oklch(0.24 var(--nc) var(--nh));">
+        <div style="font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.16em; color: oklch(0.52 var(--nc) var(--nh)); text-transform: uppercase;">Transferring</div>
+        <div style="display: flex; align-items: baseline; gap: 8px; margin-top: 8px;">
+          <span style="font-family: 'JetBrains Mono', monospace; font-size: 26px; font-weight: 500; letter-spacing: -0.01em;">{{ activeCount }}</span>
+          <span style="font-family: 'JetBrains Mono', monospace; font-size: 15px; color: oklch(0.50 var(--nc) var(--nh)); white-space: nowrap;">/ {{ totalCount }}</span>
+          <span style="font-size: 12px; color: oklch(0.56 var(--nc) var(--nh)); margin-left: 2px; white-space: nowrap;">jobs in queue</span>
+        </div>
+      </div>
+
+      <div style="padding: 18px 24px; border-right: 1px solid oklch(0.24 var(--nc) var(--nh)); display: flex; align-items: flex-end; justify-content: space-between; gap: 20px;">
+        <div>
+          <div style="font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.16em; color: oklch(0.52 var(--nc) var(--nh)); text-transform: uppercase;">Aggregate</div>
+          <div style="display: flex; align-items: baseline; gap: 6px; margin-top: 8px;">
+            <span style="font-family: 'JetBrains Mono', monospace; font-size: 26px; font-weight: 500; color: oklch(0.74 0.15 var(--ah)); letter-spacing: -0.01em;">{{ aggregate }}</span>
+            <span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: oklch(0.56 var(--nc) var(--nh));">MB/s</span>
+          </div>
+        </div>
+        <div style="display: flex; align-items: flex-end; gap: 2px; height: 40px; flex: 1; max-width: 320px;">
+          <sc-for list="{{ spark }}" as="s" hint-placeholder-count="40">
+            <div style="{{ s.style }}"></div>
+          </sc-for>
+        </div>
+      </div>
+
+      <div style="padding: 18px 24px; border-right: 1px solid oklch(0.24 var(--nc) var(--nh));">
+        <div style="font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.16em; color: oklch(0.52 var(--nc) var(--nh)); text-transform: uppercase;">Disk free</div>
+        <div style="display: flex; align-items: baseline; gap: 8px; margin-top: 8px;">
+          <span style="font-family: 'JetBrains Mono', monospace; font-size: 26px; font-weight: 500; letter-spacing: -0.01em;">224.4</span>
+          <span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: oklch(0.56 var(--nc) var(--nh));">GB</span>
+          <span style="font-size: 12px; color: oklch(0.56 var(--nc) var(--nh)); margin-left: 2px; white-space: nowrap;">→ 189.1 GB after queue</span>
+        </div>
+      </div>
+
+      <div style="padding: 18px 24px; display: flex; align-items: center; justify-content: space-between; gap: 12px;">
+        <div>
+          <div style="font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.16em; color: oklch(0.52 var(--nc) var(--nh)); text-transform: uppercase;">Recovered</div>
+          <div style="display: flex; align-items: baseline; gap: 6px; margin-top: 8px;">
+            <span style="font-family: 'JetBrains Mono', monospace; font-size: 26px; font-weight: 500; letter-spacing: -0.01em;">3</span>
+            <span style="font-size: 12px; color: oklch(0.56 var(--nc) var(--nh));">stalls</span>
+          </div>
+        </div>
+        <button onClick="{{ togglePauseAll }}" style="{{ pauseAllStyle }}">{{ pauseAllLabel }}</button>
+      </div>
+    </header>
+
+    <sc-if value="{{ isDash }}" hint-placeholder-val="{{ true }}">
+      <div style="padding: 26px 32px 60px;">
+
+        <section style="border: 1px solid oklch(0.27 var(--nc) var(--nh)); background: oklch(0.196 var(--nc) var(--nh));">
+          <div style="display: flex; align-items: stretch;">
+            <div style="display: flex; align-items: center; padding: 0 16px 0 18px; font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.16em; color: oklch(0.52 var(--nc) var(--nh)); text-transform: uppercase; border-right: 1px solid oklch(0.25 var(--nc) var(--nh));">Source</div>
+            <input placeholder="huggingface.co/org/model  ·  or paste a direct file URL" style="flex: 1; min-width: 0; border: none; background: transparent; padding: 20px 18px; font-family: 'JetBrains Mono', monospace; font-size: 15px; color: oklch(0.93 var(--nc) var(--nh));" />
+            <div style="display: flex; align-items: center; gap: 10px; padding-right: 10px;">
+              <div style="display: flex; align-items: center; gap: 7px; padding: 6px 10px; border: 1px solid oklch(0.30 var(--nc) var(--nh)); font-family: 'JetBrains Mono', monospace; font-size: 11px; color: oklch(0.70 var(--nc) var(--nh));">
+                <span style="color: oklch(0.50 var(--nc) var(--nh));">→</span>
+                <span>…\Downloads\longrebuttal</span>
+              </div>
+              <div style="display: flex; align-items: center; gap: 7px; padding: 6px 10px; border: 1px solid oklch(0.30 var(--nc) var(--nh)); font-family: 'JetBrains Mono', monospace; font-size: 11px; color: oklch(0.70 var(--nc) var(--nh));">
+                <span style="color: oklch(0.50 var(--nc) var(--nh));">×</span>
+                <span>4 conn</span>
+              </div>
+              <button style="border: none; background: oklch(0.70 0.17 var(--ah)); color: oklch(0.16 0.03 var(--ah)); font-weight: 600; font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; padding: 13px 26px; cursor: pointer;" style-hover="background: oklch(0.78 0.15 var(--ah));">Resolve</button>
+            </div>
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px; padding: 11px 18px; border-top: 1px solid oklch(0.24 var(--nc) var(--nh)); background: oklch(0.183 var(--nc) var(--nh));">
+            <span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.16em; color: oklch(0.45 var(--nc) var(--nh)); text-transform: uppercase; margin-right: 4px;">Recent</span>
+            <sc-for list="{{ recents }}" as="r" hint-placeholder-count="4">
+              <div style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: oklch(0.62 var(--nc) var(--nh)); padding: 4px 9px; border: 1px solid oklch(0.26 var(--nc) var(--nh)); cursor: pointer; white-space: nowrap;" style-hover="color: oklch(0.86 var(--nc) var(--nh)); border-color: oklch(0.40 0.05 var(--ah));">{{ r }}</div>
+            </sc-for>
+          </div>
+        </section>
+
+        <div style="display: flex; align-items: baseline; justify-content: space-between; margin: 34px 0 12px;">
+          <div style="display: flex; align-items: baseline; gap: 12px;">
+            <span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.18em; color: oklch(0.56 var(--nc) var(--nh)); text-transform: uppercase;">Job queue</span>
+            <span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; color: oklch(0.42 var(--nc) var(--nh));">{{ totalCount }} active · 12 completed today</span>
+          </div>
+          <div style="display: flex; gap: 16px; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: oklch(0.52 var(--nc) var(--nh));">
+            <span style="cursor: pointer;" style-hover="color: oklch(0.86 var(--nc) var(--nh));">Sort: priority</span>
+            <span style="cursor: pointer;" style-hover="color: oklch(0.86 var(--nc) var(--nh));">Clear finished</span>
+          </div>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 1px; background: oklch(0.27 var(--nc) var(--nh)); border: 1px solid oklch(0.27 var(--nc) var(--nh));">
+          <sc-for list="{{ jobs }}" as="job" hint-placeholder-count="3">
+            <div style="{{ job.rowStyle }}">
+
+              <div style="display: flex; align-items: center; gap: 14px;">
+                <div style="display: flex; flex-direction: column; gap: 3px; color: oklch(0.38 var(--nc) var(--nh)); cursor: grab; line-height: 0.7; font-size: 13px;">
+                  <span>⠿</span>
+                </div>
+                <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: oklch(0.45 var(--nc) var(--nh));">{{ job.idx }}</span>
+                <span style="font-family: 'JetBrains Mono', monospace; font-size: 15px; font-weight: 500; color: oklch(0.94 var(--nc) var(--nh)); cursor: pointer;" onClick="{{ openDetail }}">{{ job.name }}</span>
+                <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: oklch(0.50 var(--nc) var(--nh));">{{ job.meta }}</span>
+                <div style="flex: 1;"></div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <div style="{{ job.dotStyle }}"></div>
+                  <span style="{{ job.stateStyle }}">{{ job.state }}</span>
+                </div>
+              </div>
+
+              <div style="display: flex; align-items: center; gap: 20px; margin-top: 16px;">
+                <div style="font-family: 'JetBrains Mono', monospace; font-size: 30px; font-weight: 500; letter-spacing: -0.02em; width: 116px; {{ job.pctColor }}">{{ job.pctLabel }}</div>
+                <div style="flex: 1; position: relative; height: 26px; background: repeating-linear-gradient(90deg, oklch(0.28 var(--nc) var(--nh)) 0 5px, transparent 5px 9px);">
+                  <div style="{{ job.fillStyle }}"></div>
+                </div>
+              </div>
+
+              <div style="display: flex; align-items: center; gap: 18px; margin-top: 12px; font-family: 'JetBrains Mono', monospace; font-size: 11.5px; color: oklch(0.62 var(--nc) var(--nh));">
+                <span>{{ job.bytes }}</span>
+                <span style="color: oklch(0.32 var(--nc) var(--nh));">│</span>
+                <span style="{{ job.speedColor }}">{{ job.speed }}</span>
+                <span style="color: oklch(0.32 var(--nc) var(--nh));">│</span>
+                <span>ETA {{ job.eta }}</span>
+                <span style="color: oklch(0.32 var(--nc) var(--nh));">│</span>
+                <span style="color: oklch(0.48 var(--nc) var(--nh));">{{ job.recov }}</span>
+                <div style="flex: 1;"></div>
+                <div style="display: flex; gap: 6px;">
+                  <button style="background: transparent; border: 1px solid oklch(0.30 var(--nc) var(--nh)); padding: 5px 12px; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: oklch(0.70 var(--nc) var(--nh)); cursor: pointer;" style-hover="border-color: oklch(0.45 var(--nc) var(--nh)); color: oklch(0.92 var(--nc) var(--nh));">{{ job.action }}</button>
+                  <button style="background: transparent; border: 1px solid oklch(0.30 var(--nc) var(--nh)); padding: 5px 12px; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: oklch(0.70 var(--nc) var(--nh)); cursor: pointer;" style-hover="border-color: oklch(0.50 0.12 var(--wh)); color: oklch(0.75 0.14 var(--wh));">Cancel</button>
+                  <button onClick="{{ openDetail }}" style="background: transparent; border: 1px solid oklch(0.34 0.05 var(--ah)); padding: 5px 12px; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: oklch(0.74 0.15 var(--ah)); cursor: pointer;" style-hover="background: oklch(0.70 0.17 var(--ah) / 0.12);">Details ›</button>
+                </div>
+              </div>
+
+            </div>
+          </sc-for>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: oklch(0.27 var(--nc) var(--nh)); border: 1px solid oklch(0.27 var(--nc) var(--nh)); margin-top: 34px;">
+          <div style="background: oklch(0.192 var(--nc) var(--nh)); padding: 20px 22px;">
+            <div style="font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.18em; color: oklch(0.52 var(--nc) var(--nh)); text-transform: uppercase; margin-bottom: 16px;">Connection health</div>
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+              <sc-for list="{{ conns }}" as="c" hint-placeholder-count="4">
+                <div style="display: flex; align-items: center; gap: 14px;">
+                  <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: oklch(0.50 var(--nc) var(--nh)); width: 46px;">{{ c.id }}</span>
+                  <div style="flex: 1; height: 8px; background: oklch(0.25 var(--nc) var(--nh));">
+                    <div style="{{ c.barStyle }}"></div>
+                  </div>
+                  <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: oklch(0.70 var(--nc) var(--nh)); width: 74px; text-align: right;">{{ c.rate }}</span>
+                  <span style="{{ c.tagStyle }}">{{ c.tag }}</span>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+          <div style="background: oklch(0.192 var(--nc) var(--nh)); padding: 20px 22px;">
+            <div style="font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.18em; color: oklch(0.52 var(--nc) var(--nh)); text-transform: uppercase; margin-bottom: 16px;">Activity</div>
+            <div style="display: flex; flex-direction: column; gap: 11px;">
+              <sc-for list="{{ feed }}" as="e" hint-placeholder-count="5">
+                <div style="display: flex; gap: 14px; align-items: baseline;">
+                  <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: oklch(0.44 var(--nc) var(--nh));">{{ e.t }}</span>
+                  <span style="{{ e.dot }}"></span>
+                  <span style="font-family: 'JetBrains Mono', monospace; font-size: 11.5px; color: oklch(0.72 var(--nc) var(--nh)); text-wrap: pretty;">{{ e.msg }}</span>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isDetail }}" hint-placeholder-val="{{ false }}">
+      <div style="padding: 26px 32px 60px;">
+        <div onClick="{{ goDash }}" style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: oklch(0.58 var(--nc) var(--nh)); cursor: pointer; display: inline-block; margin-bottom: 22px;" style-hover="color: oklch(0.90 var(--nc) var(--nh));">‹ Back to queue</div>
+
+        <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 24px;">
+          <div>
+            <div style="font-family: 'JetBrains Mono', monospace; font-size: 22px; font-weight: 500; color: oklch(0.95 var(--nc) var(--nh));">mistralai/Voxtral-Mini-4B-Realtime-2602</div>
+            <div style="font-family: 'JetBrains Mono', monospace; font-size: 11.5px; color: oklch(0.52 var(--nc) var(--nh)); margin-top: 8px;">C:\Users\wreck\Downloads\longrebuttal · 9 files · sha256 verify on 3/9</div>
+          </div>
+          <div style="display: flex; align-items: center; gap: 9px; padding: 7px 12px; border: 1px solid oklch(0.34 0.05 var(--ah));">
+            <div style="width: 7px; height: 7px; background: oklch(0.70 0.17 var(--ah)); animation: lr-pulse 1.6s ease-in-out infinite;"></div>
+            <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.12em; color: oklch(0.74 0.15 var(--ah)); text-transform: uppercase;">Downloading</span>
+          </div>
+        </div>
+
+        <div style="display: flex; align-items: center; gap: 24px; margin: 30px 0 26px;">
+          <div style="font-family: 'JetBrains Mono', monospace; font-size: 52px; font-weight: 500; letter-spacing: -0.03em; color: oklch(0.74 0.15 var(--ah)); width: 200px;">{{ detailPct }}</div>
+          <div style="flex: 1;">
+            <div style="position: relative; height: 34px; background: repeating-linear-gradient(90deg, oklch(0.28 var(--nc) var(--nh)) 0 5px, transparent 5px 9px);">
+              <div style="{{ detailFill }}"></div>
+            </div>
+            <div style="display: flex; gap: 18px; margin-top: 10px; font-family: 'JetBrains Mono', monospace; font-size: 11.5px; color: oklch(0.62 var(--nc) var(--nh));">
+              <span>{{ detailBytes }}</span>
+              <span style="color: oklch(0.32 var(--nc) var(--nh));">│</span>
+              <span style="color: oklch(0.74 0.15 var(--ah));">{{ detailSpeed }}</span>
+              <span style="color: oklch(0.32 var(--nc) var(--nh));">│</span>
+              <span>ETA {{ detailEta }}</span>
+            </div>
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: oklch(0.27 var(--nc) var(--nh)); border: 1px solid oklch(0.27 var(--nc) var(--nh));">
+          <div style="background: oklch(0.192 var(--nc) var(--nh)); padding: 16px 20px;">
+            <div style="font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.16em; color: oklch(0.52 var(--nc) var(--nh)); text-transform: uppercase;">Auto-recoveries</div>
+            <div style="font-family: 'JetBrains Mono', monospace; font-size: 22px; margin-top: 8px;">2</div>
+          </div>
+          <div style="background: oklch(0.192 var(--nc) var(--nh)); padding: 16px 20px;">
+            <div style="font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.16em; color: oklch(0.52 var(--nc) var(--nh)); text-transform: uppercase;">Average speed</div>
+            <div style="font-family: 'JetBrains Mono', monospace; font-size: 22px; margin-top: 8px;">28.4 MB/s</div>
+          </div>
+          <div style="background: oklch(0.192 var(--nc) var(--nh)); padding: 16px 20px;">
+            <div style="font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.16em; color: oklch(0.52 var(--nc) var(--nh)); text-transform: uppercase;">Elapsed</div>
+            <div style="font-family: 'JetBrains Mono', monospace; font-size: 22px; margin-top: 8px;">00h 07m</div>
+          </div>
+          <div style="background: oklch(0.192 var(--nc) var(--nh)); padding: 16px 20px;">
+            <div style="font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.16em; color: oklch(0.52 var(--nc) var(--nh)); text-transform: uppercase;">Started</div>
+            <div style="font-family: 'JetBrains Mono', monospace; font-size: 22px; margin-top: 8px;">10:42</div>
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1.35fr 1fr; gap: 1px; background: oklch(0.27 var(--nc) var(--nh)); border: 1px solid oklch(0.27 var(--nc) var(--nh)); border-top: none;">
+          <div style="background: oklch(0.192 var(--nc) var(--nh));">
+            <div style="padding: 15px 20px; border-bottom: 1px solid oklch(0.25 var(--nc) var(--nh)); font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.18em; color: oklch(0.52 var(--nc) var(--nh)); text-transform: uppercase;">Files</div>
+            <sc-for list="{{ files }}" as="f" hint-placeholder-count="9">
+              <div style="display: flex; align-items: center; gap: 16px; padding: 11px 20px; border-bottom: 1px solid oklch(0.215 var(--nc) var(--nh));">
+                <span style="font-family: 'JetBrains Mono', monospace; font-size: 12.5px; color: oklch(0.84 var(--nc) var(--nh)); flex: 1;">{{ f.name }}</span>
+                <span style="font-family: 'JetBrains Mono', monospace; font-size: 11.5px; color: oklch(0.55 var(--nc) var(--nh)); width: 70px; text-align: right;">{{ f.size }}</span>
+                <div style="width: 120px; height: 6px; background: oklch(0.25 var(--nc) var(--nh));">
+                  <div style="{{ f.barStyle }}"></div>
+                </div>
+                <span style="{{ f.statusStyle }}">{{ f.status }}</span>
+              </div>
+            </sc-for>
+          </div>
+          <div style="background: oklch(0.192 var(--nc) var(--nh));">
+            <div style="padding: 15px 20px; border-bottom: 1px solid oklch(0.25 var(--nc) var(--nh)); font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.18em; color: oklch(0.52 var(--nc) var(--nh)); text-transform: uppercase;">Event log</div>
+            <div style="display: flex; flex-direction: column; gap: 13px; padding: 18px 20px;">
+              <sc-for list="{{ log }}" as="l" hint-placeholder-count="6">
+                <div style="display: flex; gap: 13px; align-items: baseline;">
+                  <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: oklch(0.44 var(--nc) var(--nh));">{{ l.t }}</span>
+                  <span style="{{ l.dot }}"></span>
+                  <span style="font-family: 'JetBrains Mono', monospace; font-size: 11.5px; color: oklch(0.70 var(--nc) var(--nh)); text-wrap: pretty; flex: 1;">{{ l.msg }}</span>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isLib }}" hint-placeholder-val="{{ false }}">
+      <div style="padding: 26px 32px 60px;">
+        <div style="display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 18px;">
+          <div>
+            <div style="font-size: 17px; font-weight: 600; letter-spacing: -0.01em;">Library</div>
+            <div style="font-family: 'JetBrains Mono', monospace; font-size: 11.5px; color: oklch(0.52 var(--nc) var(--nh)); margin-top: 6px;">Completed jobs, on disk · 412.8 GB across 38 items</div>
+          </div>
+          <div style="display: flex; gap: 16px; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: oklch(0.52 var(--nc) var(--nh));">
+            <span style="cursor: pointer;" style-hover="color: oklch(0.86 var(--nc) var(--nh));">Verify all</span>
+            <span style="cursor: pointer;" style-hover="color: oklch(0.86 var(--nc) var(--nh));">Export manifest</span>
+          </div>
+        </div>
+
+        <div style="border: 1px solid oklch(0.27 var(--nc) var(--nh)); background: oklch(0.192 var(--nc) var(--nh));">
+          <div style="display: grid; grid-template-columns: 2.4fr 0.7fr 0.9fr 1fr 0.8fr; gap: 16px; padding: 12px 20px; border-bottom: 1px solid oklch(0.27 var(--nc) var(--nh)); font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.14em; color: oklch(0.48 var(--nc) var(--nh)); text-transform: uppercase;">
+            <span>Item</span>
+            <span>Size</span>
+            <span>Integrity</span>
+            <span>Finished</span>
+            <span></span>
+          </div>
+          <sc-for list="{{ library }}" as="i" hint-placeholder-count="6">
+            <div style="display: grid; grid-template-columns: 2.4fr 0.7fr 0.9fr 1fr 0.8fr; gap: 16px; align-items: center; padding: 14px 20px; border-bottom: 1px solid oklch(0.215 var(--nc) var(--nh));" style-hover="background: oklch(0.213 var(--nc) var(--nh));">
+              <div>
+                <div style="font-family: 'JetBrains Mono', monospace; font-size: 13px; color: oklch(0.90 var(--nc) var(--nh));">{{ i.name }}</div>
+                <div style="font-family: 'JetBrains Mono', monospace; font-size: 10.5px; color: oklch(0.46 var(--nc) var(--nh)); margin-top: 4px;">{{ i.path }}</div>
+              </div>
+              <span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: oklch(0.72 var(--nc) var(--nh));">{{ i.size }}</span>
+              <span style="{{ i.checkStyle }}">{{ i.check }}</span>
+              <span style="font-family: 'JetBrains Mono', monospace; font-size: 11.5px; color: oklch(0.58 var(--nc) var(--nh));">{{ i.when }}</span>
+              <div style="display: flex; gap: 6px; justify-content: flex-end;">
+                <button style="background: transparent; border: 1px solid oklch(0.30 var(--nc) var(--nh)); padding: 4px 10px; font-family: 'JetBrains Mono', monospace; font-size: 10.5px; color: oklch(0.68 var(--nc) var(--nh)); cursor: pointer;" style-hover="border-color: oklch(0.45 var(--nc) var(--nh)); color: oklch(0.92 var(--nc) var(--nh));">Open</button>
+                <button style="background: transparent; border: 1px solid oklch(0.30 var(--nc) var(--nh)); padding: 4px 10px; font-family: 'JetBrains Mono', monospace; font-size: 10.5px; color: oklch(0.68 var(--nc) var(--nh)); cursor: pointer;" style-hover="border-color: oklch(0.45 var(--nc) var(--nh)); color: oklch(0.92 var(--nc) var(--nh));">Re-verify</button>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isSet }}" hint-placeholder-val="{{ false }}">
+      <div style="padding: 26px 32px 60px; max-width: 980px;">
+        <div style="font-size: 17px; font-weight: 600; letter-spacing: -0.01em;">Settings</div>
+        <div style="font-family: 'JetBrains Mono', monospace; font-size: 11.5px; color: oklch(0.52 var(--nc) var(--nh)); margin-top: 6px;">Supervisor configuration · applies to new jobs</div>
+
+        <div style="margin-top: 28px; border: 1px solid oklch(0.27 var(--nc) var(--nh)); background: oklch(0.192 var(--nc) var(--nh));">
+          <div style="padding: 13px 22px; border-bottom: 1px solid oklch(0.27 var(--nc) var(--nh)); font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.18em; color: oklch(0.52 var(--nc) var(--nh)); text-transform: uppercase;">Transfer</div>
+
+          <div style="display: grid; grid-template-columns: 300px 1fr; gap: 24px; padding: 20px 22px; border-bottom: 1px solid oklch(0.215 var(--nc) var(--nh));">
+            <div>
+              <div style="font-size: 13.5px; font-weight: 500;">Default destination</div>
+              <div style="font-size: 12px; color: oklch(0.54 var(--nc) var(--nh)); margin-top: 4px;">New jobs land here.</div>
+            </div>
+            <div style="display: flex; gap: 10px; align-items: center;">
+              <input value="C:\Users\wreck\Downloads\longrebuttal" style="flex: 1; background: oklch(0.165 var(--nc) var(--nh)); border: 1px solid oklch(0.29 var(--nc) var(--nh)); padding: 10px 12px; font-family: 'JetBrains Mono', monospace; font-size: 12.5px; color: oklch(0.88 var(--nc) var(--nh));" style-focus="border-color: oklch(0.50 0.10 var(--ah));" />
+              <button style="background: transparent; border: 1px solid oklch(0.30 var(--nc) var(--nh)); padding: 10px 14px; font-family: 'JetBrains Mono', monospace; font-size: 11.5px; color: oklch(0.70 var(--nc) var(--nh)); cursor: pointer;" style-hover="border-color: oklch(0.45 var(--nc) var(--nh)); color: oklch(0.92 var(--nc) var(--nh));">Browse</button>
+            </div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 300px 1fr; gap: 24px; padding: 20px 22px; border-bottom: 1px solid oklch(0.215 var(--nc) var(--nh));">
+            <div>
+              <div style="font-size: 13.5px; font-weight: 500;">Connections per download</div>
+              <div style="font-size: 12px; color: oklch(0.54 var(--nc) var(--nh)); margin-top: 4px;">Higher is faster until the host throttles.</div>
+            </div>
+            <div style="display: flex; gap: 6px;">
+              <sc-for list="{{ connOpts }}" as="o" hint-placeholder-count="5">
+                <div onClick="{{ o.pick }}" style="{{ o.style }}">{{ o.n }}</div>
+              </sc-for>
+            </div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 300px 1fr; gap: 24px; padding: 20px 22px; border-bottom: 1px solid oklch(0.215 var(--nc) var(--nh));">
+            <div>
+              <div style="font-size: 13.5px; font-weight: 500;">Stall sensitivity</div>
+              <div style="font-size: 12px; color: oklch(0.54 var(--nc) var(--nh)); margin-top: 4px;">When to assume aria2c is stuck.</div>
+            </div>
+            <div style="display: flex; gap: 6px;">
+              <sc-for list="{{ stallOpts }}" as="o" hint-placeholder-count="3">
+                <div onClick="{{ o.pick }}" style="{{ o.style }}">{{ o.n }}</div>
+              </sc-for>
+            </div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 300px 1fr; gap: 24px; padding: 20px 22px;">
+            <div>
+              <div style="font-size: 13.5px; font-weight: 500;">Verify checksums</div>
+              <div style="font-size: 12px; color: oklch(0.54 var(--nc) var(--nh)); margin-top: 4px;">Hash each file against the source manifest after transfer.</div>
+            </div>
+            <div onClick="{{ toggleVerify }}" style="{{ verifyTrack }}">
+              <div style="{{ verifyKnob }}"></div>
+            </div>
+          </div>
+        </div>
+
+        <div style="margin-top: 22px; border: 1px solid oklch(0.27 var(--nc) var(--nh)); background: oklch(0.192 var(--nc) var(--nh));">
+          <div style="padding: 13px 22px; border-bottom: 1px solid oklch(0.27 var(--nc) var(--nh)); font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.18em; color: oklch(0.52 var(--nc) var(--nh)); text-transform: uppercase;">Access &amp; scheduling</div>
+
+          <div style="display: grid; grid-template-columns: 300px 1fr; gap: 24px; padding: 20px 22px; border-bottom: 1px solid oklch(0.215 var(--nc) var(--nh));">
+            <div>
+              <div style="font-size: 13.5px; font-weight: 500;">HuggingFace token</div>
+              <div style="font-size: 12px; color: oklch(0.54 var(--nc) var(--nh)); margin-top: 4px;">Required for gated repos. Stored in the OS credential vault.</div>
+            </div>
+            <div style="display: flex; gap: 10px; align-items: center;">
+              <input value="hf_••••••••••••••••••••••••••" style="flex: 1; background: oklch(0.165 var(--nc) var(--nh)); border: 1px solid oklch(0.29 var(--nc) var(--nh)); padding: 10px 12px; font-family: 'JetBrains Mono', monospace; font-size: 12.5px; color: oklch(0.88 var(--nc) var(--nh));" style-focus="border-color: oklch(0.50 0.10 var(--ah));" />
+              <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: oklch(0.75 0.15 var(--sh));">Valid</span>
+            </div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 300px 1fr; gap: 24px; padding: 20px 22px; border-bottom: 1px solid oklch(0.215 var(--nc) var(--nh));">
+            <div>
+              <div style="font-size: 13.5px; font-weight: 500;">Quiet hours</div>
+              <div style="font-size: 12px; color: oklch(0.54 var(--nc) var(--nh)); margin-top: 4px;">Throttle to 5 MB/s inside this window.</div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 14px; font-family: 'JetBrains Mono', monospace; font-size: 12.5px;">
+              <div onClick="{{ toggleQuiet }}" style="{{ quietTrack }}">
+                <div style="{{ quietKnob }}"></div>
+              </div>
+              <input value="23:00" style="width: 82px; background: oklch(0.165 var(--nc) var(--nh)); border: 1px solid oklch(0.29 var(--nc) var(--nh)); padding: 10px 12px; font-family: 'JetBrains Mono', monospace; font-size: 12.5px; color: oklch(0.88 var(--nc) var(--nh)); text-align: center;" style-focus="border-color: oklch(0.50 0.10 var(--ah));" />
+              <span style="color: oklch(0.45 var(--nc) var(--nh));">→</span>
+              <input value="07:30" style="width: 82px; background: oklch(0.165 var(--nc) var(--nh)); border: 1px solid oklch(0.29 var(--nc) var(--nh)); padding: 10px 12px; font-family: 'JetBrains Mono', monospace; font-size: 12.5px; color: oklch(0.88 var(--nc) var(--nh)); text-align: center;" style-focus="border-color: oklch(0.50 0.10 var(--ah));" />
+            </div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 300px 1fr; gap: 24px; padding: 20px 22px;">
+            <div>
+              <div style="font-size: 13.5px; font-weight: 500;">Start on boot</div>
+              <div style="font-size: 12px; color: oklch(0.54 var(--nc) var(--nh)); margin-top: 4px;">Windows service that supervises jobs.</div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 16px;">
+              <span style="font-family: 'JetBrains Mono', monospace; font-size: 12.5px; color: oklch(0.72 0.14 var(--wh));">Not installed — downloads stop when you log out</span>
+              <button style="background: transparent; border: 1px solid oklch(0.34 0.05 var(--ah)); padding: 7px 16px; font-family: 'JetBrains Mono', monospace; font-size: 11.5px; color: oklch(0.74 0.15 var(--ah)); cursor: pointer;" style-hover="background: oklch(0.70 0.17 var(--ah) / 0.12);">Install</button>
+            </div>
+          </div>
+        </div>
+
+        <div style="margin-top: 22px; border: 1px solid oklch(0.27 var(--nc) var(--nh)); background: oklch(0.192 var(--nc) var(--nh));">
+          <div style="padding: 13px 22px; border-bottom: 1px solid oklch(0.27 var(--nc) var(--nh)); font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.18em; color: oklch(0.52 var(--nc) var(--nh)); text-transform: uppercase;">Appearance</div>
+          <div style="display: grid; grid-template-columns: 300px 1fr; gap: 24px; padding: 20px 22px;">
+            <div>
+              <div style="font-size: 13.5px; font-weight: 500;">Theme</div>
+              <div style="font-size: 12px; color: oklch(0.54 var(--nc) var(--nh)); margin-top: 4px;">Ground tone and signal colour for the whole interface.</div>
+            </div>
+            <div>
+              <div style="display: flex; gap: 10px;">
+                <sc-for list="{{ themes }}" as="t" hint-placeholder-count="4">
+                  <div onClick="{{ t.pick }}" style="{{ t.style }}">
+                    <div style="{{ t.dot }}"></div>
+                  </div>
+                </sc-for>
+              </div>
+              <div style="font-family: 'JetBrains Mono', monospace; font-size: 11.5px; color: oklch(0.58 var(--nc) var(--nh)); margin-top: 12px;">{{ themeName }}</div>
+            </div>
+          </div>
+        </div>
+
+        <div style="display: flex; align-items: center; gap: 16px; margin-top: 24px;">
+          <button style="border: none; background: oklch(0.70 0.17 var(--ah)); color: oklch(0.16 0.03 var(--ah)); font-weight: 600; font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; padding: 13px 32px; cursor: pointer;" style-hover="background: oklch(0.78 0.15 var(--ah));">Save</button>
+          <span style="font-family: 'JetBrains Mono', monospace; font-size: 11.5px; color: oklch(0.48 var(--nc) var(--nh));">Last saved 10:39 · config.toml · Bit Rebuttal v0.1.0 · aria2c 1.37.0</span>
+        </div>
+      </div>
+    </sc-if>
+
+  </main>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;mauve&quot;,&quot;graphite&quot;,&quot;ink&quot;,&quot;slate&quot;],&quot;default&quot;:&quot;mauve&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Style&quot;},&quot;barStyle&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;segmented&quot;,&quot;solid&quot;],&quot;default&quot;:&quot;segmented&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Style&quot;},&quot;liveDemo&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Demo&quot;}}">
+const ACC = 'oklch(0.70 0.17 var(--ah))';
+const OK = 'oklch(0.75 0.15 var(--sh))';
+const WARN = 'oklch(0.72 0.14 var(--wh))';
+const DIM = 'oklch(0.52 var(--nc) var(--nh))';
+
+const FACE = {
+  idle: ['..oooo..', '.o....o.', 'o.x..x.o', 'o......o', 'o.x..x.o', 'o..xx..o', '.o....o.', '..oooo..'],
+  blink: ['..oooo..', '.o....o.', 'o......o', 'o.xxxx.o', 'o.x..x.o', 'o..xx..o', '.o....o.', '..oooo..'],
+  grin: ['..oooo..', '.o....o.', 'o.x..x.o', 'o......o', 'o.x..x.o', 'o.xxxx.o', '.o....o.', '..oooo..']
+};
+
+const THEMES = {
+  graphite: { name: 'Graphite · Violet', nh: 155, nc: 0.009, ah: 295, sh: 160, wh: 15, sw: 'oklch(0.20 0.010 155)', ac: 'oklch(0.70 0.17 295)' },
+  ink:      { name: 'Deep ink · Cyan',   nh: 255, nc: 0.014, ah: 205, sh: 165, wh: 18, sw: 'oklch(0.20 0.014 255)', ac: 'oklch(0.72 0.15 205)' },
+  slate:    { name: 'Cool slate · Lime', nh: 215, nc: 0.008, ah: 128, sh: 196, wh: 12, sw: 'oklch(0.20 0.008 215)', ac: 'oklch(0.74 0.17 128)' },
+  mauve:    { name: 'Mauve · Azure',     nh: 325, nc: 0.011, ah: 248, sh: 150, wh: 10, sw: 'oklch(0.20 0.011 325)', ac: 'oklch(0.70 0.16 248)' }
+};
+
+class Component extends DCLogic {
+  state = {
+    screen: 'dashboard',
+    t: 0,
+    pcts: [41.6, 0, 88.2],
+    spark: Array.from({ length: 44 }, (_, i) => 0.35 + 0.4 * Math.abs(Math.sin(i / 3.1)) + Math.random() * 0.2),
+    heart: Array.from({ length: 14 }, () => Math.random()),
+    hb: 1,
+    paused: false,
+    cap: 60,
+    conn: 4,
+    stall: 'Normal',
+    verify: true,
+    quiet: false,
+    theme: null
+  };
+
+  themeKey() {
+    const k = this.state.theme || this.props.theme || 'mauve';
+    return THEMES[k] ? k : 'mauve';
+  }
+
+  applyTheme() {
+    const t = THEMES[this.themeKey()];
+    const r = document.documentElement.style;
+    r.setProperty('--nh', t.nh);
+    r.setProperty('--nc', t.nc);
+    r.setProperty('--ah', t.ah);
+    r.setProperty('--sh', t.sh);
+    r.setProperty('--wh', t.wh);
+  }
+
+  componentDidUpdate() { this.applyTheme(); }
+
+  componentDidMount() {
+    this.applyTheme();
+    if (this.props.liveDemo === false) return;
+    this.timer = setInterval(() => {
+      this.setState(s => {
+        const pcts = s.pcts.slice();
+        if (!s.paused) {
+          pcts[0] = Math.min(99.4, pcts[0] + 0.09 + Math.random() * 0.05);
+          pcts[2] = Math.min(99.9, pcts[2] + 0.04);
+        }
+        const spark = s.spark.slice(1).concat([s.paused ? 0.04 : 0.45 + Math.random() * 0.5]);
+        const heart = s.heart.slice(1).concat([Math.random()]);
+        return { pcts, spark, heart, t: s.t + 1, hb: (s.t + 1) % 3 };
+      });
+    }, 900);
+  }
+  componentWillUnmount() { clearInterval(this.timer); }
+
+  nav(screen) { return () => this.setState({ screen }); }
+
+  navStyle(active) {
+    return 'display: grid; grid-template-columns: 22px 1fr auto; align-items: center; gap: 10px; padding: 10px 20px; cursor: pointer; font-size: 13.5px; letter-spacing: 0.01em;'
+      + (active
+        ? 'color: oklch(0.96 var(--nc) var(--nh)); background: oklch(0.70 0.17 var(--ah) / 0.10); box-shadow: inset 2px 0 0 ' + ACC + ';'
+        : 'color: oklch(0.62 var(--nc) var(--nh));');
+  }
+
+  pill(active) {
+    return 'padding: 8px 18px; font-family: \'JetBrains Mono\', monospace; font-size: 12.5px; cursor: pointer; border: 1px solid '
+      + (active ? 'oklch(0.42 0.10 var(--ah)); color: oklch(0.80 0.13 var(--ah)); background: oklch(0.70 0.17 var(--ah) / 0.12);'
+                : 'oklch(0.29 var(--nc) var(--nh)); color: oklch(0.62 var(--nc) var(--nh)); background: transparent;');
+  }
+
+  bar(v, color, h) {
+    return 'flex: 1; min-width: 2px; height: ' + Math.max(6, v * h) + 'px; background: ' + color + ';';
+  }
+
+  render_jobs() {
+    const p = this.state.pcts;
+    const paused = this.state.paused;
+    const segmented = (this.props.barStyle || 'segmented') === 'segmented';
+    const fill = (pct, color) => 'position: absolute; left: 0; top: 0; bottom: 0; width: ' + pct.toFixed(2) + '%; background: '
+      + (segmented ? 'repeating-linear-gradient(90deg, ' + color + ' 0 5px, transparent 5px 9px)' : color) + ';';
+
+    return [
+      {
+        idx: '01', name: 'mistralai/Voxtral-Mini-4B-Realtime-2602', meta: '9 files · 17.7 GB · sha256 3/9',
+        state: paused ? 'Paused' : 'Downloading', pct: p[0],
+        pctLabel: p[0].toFixed(1) + '%', bytes: (17.7 * p[0] / 100).toFixed(1) + ' GB / 17.7 GB',
+        speed: paused ? '— MB/s' : '38.9 MB/s', eta: paused ? '—' : '0h 41m', recov: '2 recoveries · 0 bytes lost',
+        action: paused ? 'Resume' : 'Pause',
+        color: paused ? DIM : ACC
+      },
+      {
+        idx: '02', name: 'Qwen/Qwen3-32B-Instruct-GGUF', meta: '4 files · 21.4 GB · queued behind 01',
+        state: 'Queued', pct: 0, pctLabel: '—', bytes: '0.0 GB / 21.4 GB', speed: '— MB/s', eta: '—',
+        recov: 'Starts when a slot frees', action: 'Start now', color: 'oklch(0.45 var(--nc) var(--nh))'
+      },
+      {
+        idx: '03', name: 'stabilityai/sd-turbo-xl', meta: '12 files · 6.2 GB · verifying',
+        state: 'Verifying', pct: p[2], pctLabel: p[2].toFixed(1) + '%', bytes: '6.2 GB / 6.2 GB',
+        speed: 'Hashing', eta: '0h 01m', recov: '0 recoveries · 0 bytes lost', action: 'Skip verify', color: OK
+      }
+    ].map(j => ({
+      ...j,
+      rowStyle: 'background: oklch(0.196 var(--nc) var(--nh)); padding: 18px 22px 16px;',
+      dotStyle: 'width: 7px; height: 7px; background: ' + j.color + ';' + (j.state === 'Downloading' ? ' animation: lr-pulse 1.6s ease-in-out infinite;' : ''),
+      stateStyle: 'font-family: \'JetBrains Mono\', monospace; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: ' + j.color + ';',
+      pctColor: 'color: ' + (j.pct ? j.color : 'oklch(0.36 var(--nc) var(--nh))') + ';',
+      speedColor: 'color: ' + (j.state === 'Downloading' ? ACC : 'oklch(0.55 var(--nc) var(--nh))') + ';',
+      fillStyle: fill(j.pct, j.color)
+    }));
+  }
+
+  renderVals() {
+    const s = this.state;
+    const jobs = this.render_jobs();
+    const dp = s.pcts[0];
+    const segmented = (this.props.barStyle || 'segmented') === 'segmented';
+
+    return {
+      isDash: s.screen === 'dashboard',
+      isDetail: s.screen === 'detail',
+      isLib: s.screen === 'library',
+      isSet: s.screen === 'settings',
+      goDash: this.nav('dashboard'),
+      goLib: this.nav('library'),
+      goSet: this.nav('settings'),
+      openDetail: this.nav('detail'),
+      navDash: this.navStyle(s.screen === 'dashboard' || s.screen === 'detail'),
+      navLib: this.navStyle(s.screen === 'library'),
+      navSet: this.navStyle(s.screen === 'settings'),
+      dashCountStyle: 'font-family: \'JetBrains Mono\', monospace; font-size: 10px; color: ' + ACC + '; border: 1px solid oklch(0.36 0.08 var(--ah)); padding: 1px 6px;',
+
+      activeCount: '02',
+      totalCount: '03',
+      aggregate: s.paused ? '0.0' : (38.9 + (s.t % 5) * 0.4).toFixed(1),
+      spark: s.spark.map(v => ({ style: this.bar(s.paused ? 0.05 : v, s.paused ? 'oklch(0.30 var(--nc) var(--nh))' : 'oklch(0.70 0.17 var(--ah) / 0.75)', 40) })),
+      heartbars: s.heart.map(v => ({ style: this.bar(v, 'oklch(0.42 0.10 var(--ah))', 22) })),
+      hb: s.hb,
+
+      face: (() => {
+        const step = s.t % 9;
+        const key = step === 4 ? 'blink' : step === 7 ? 'grin' : 'idle';
+        const out = [];
+        FACE[key].forEach(row => row.split('').forEach(ch => {
+          out.push({
+            style: 'width: 3px; height: 3px; background: '
+              + (ch === 'o' ? 'oklch(0.46 var(--nc) var(--nh))' : ch === 'x' ? 'oklch(0.70 0.17 var(--ah))' : 'transparent') + ';'
+          });
+        }));
+        return out;
+      })(),
+
+      themeName: THEMES[this.themeKey()].name,
+      themes: Object.keys(THEMES).map(k => {
+        const t = THEMES[k], on = k === this.themeKey();
+        return {
+          pick: () => this.setState({ theme: k }),
+          style: 'width: 30px; height: 30px; cursor: pointer; display: flex; align-items: center; justify-content: center; background: ' + t.sw
+            + '; border: 1px solid ' + (on ? t.ac : 'oklch(0.32 var(--nc) var(--nh))') + ';',
+          dot: 'width: ' + (on ? 12 : 8) + 'px; height: ' + (on ? 12 : 8) + 'px; background: ' + t.ac + ';'
+        };
+      }),
+
+      capLabel: s.cap >= 120 ? '∞' : String(s.cap),
+      cap: s.cap,
+      setCap: e => this.setState({ cap: Number(e.target.value) }),
+
+      paused: s.paused,
+      togglePauseAll: () => this.setState(st => ({ paused: !st.paused })),
+      pauseAllLabel: s.paused ? 'Resume all' : 'Pause all',
+      pauseAllStyle: 'background: transparent; border: 1px solid ' + (s.paused ? 'oklch(0.42 0.10 var(--ah))' : 'oklch(0.30 var(--nc) var(--nh))')
+        + '; color: ' + (s.paused ? 'oklch(0.80 0.13 var(--ah))' : 'oklch(0.72 var(--nc) var(--nh))')
+        + '; font-family: \'JetBrains Mono\', monospace; font-size: 11px; letter-spacing: 0.10em; padding: 9px 14px; cursor: pointer; white-space: nowrap;',
+
+      recents: ['meta-llama/Llama-3.3-70B', 'unsloth/gemma-3-27b-it-GGUF', 'black-forest-labs/FLUX.1-dev', 'cdn.example.org/dataset-04.tar'],
+      jobs,
+
+      conns: [
+        { id: 'Conn 1', v: 0.92, rate: '11.2 MB/s', tag: 'ok' },
+        { id: 'Conn 2', v: 0.88, rate: '10.6 MB/s', tag: 'ok' },
+        { id: 'Conn 3', v: 0.34, rate: '4.1 MB/s', tag: 'slow' },
+        { id: 'Conn 4', v: 0.97, rate: '13.0 MB/s', tag: 'ok' }
+      ].map(c => ({
+        ...c,
+        barStyle: 'height: 100%; width: ' + (c.v * 100) + '%; background: ' + (c.tag === 'ok' ? ACC : WARN) + ';',
+        tagStyle: 'font-family: \'JetBrains Mono\', monospace; font-size: 10.5px; letter-spacing: 0.1em; text-transform: uppercase; width: 42px; color: ' + (c.tag === 'ok' ? OK : WARN) + ';'
+      })),
+
+      feed: [
+        { t: '10:49', msg: 'Conn 3 renegotiated after 12s of no bytes', c: WARN },
+        { t: '10:47', msg: 'SD-turbo-xl transfer complete — verifying 12 files', c: OK },
+        { t: '10:44', msg: 'Qwen3-32B-Instruct-GGUF queued, 21.4 GB resolved', c: DIM },
+        { t: '10:42', msg: 'aria2c launched on RPC port 8717 — 9 files queued', c: DIM },
+        { t: '10:41', msg: 'HuggingFace token accepted for mistralai', c: OK }
+      ].map(e => ({ ...e, dot: 'width: 5px; height: 5px; flex: none; background: ' + e.c + ';' })),
+
+      detailPct: dp.toFixed(1) + '%',
+      detailBytes: (17.7 * dp / 100).toFixed(1) + ' GB / 17.7 GB',
+      detailSpeed: s.paused ? '— MB/s' : '38.9 MB/s',
+      detailEta: s.paused ? '—' : '0h 41m',
+      detailFill: 'position: absolute; left: 0; top: 0; bottom: 0; width: ' + dp.toFixed(2) + '%; background: '
+        + (segmented ? 'repeating-linear-gradient(90deg, ' + ACC + ' 0 5px, transparent 5px 9px)' : ACC) + ';',
+
+      files: [
+        { name: '.gitattributes', size: '0.0 GB', v: 1, status: 'verified' },
+        { name: 'README.md', size: '0.0 GB', v: 1, status: 'verified' },
+        { name: 'config.json', size: '0.0 GB', v: 1, status: 'verified' },
+        { name: 'consolidated.safetensors', size: '8.9 GB', v: Math.min(1, dp / 60), status: 'downloading' },
+        { name: 'generation_config.json', size: '0.0 GB', v: 1, status: 'done' },
+        { name: 'model.safetensors', size: '8.9 GB', v: 0, status: 'queued' },
+        { name: 'params.json', size: '0.0 GB', v: 0, status: 'queued' },
+        { name: 'processor_config.json', size: '0.0 GB', v: 0, status: 'queued' },
+        { name: 'tekken.json', size: '0.0 GB', v: 0, status: 'queued' }
+      ].map(f => {
+        const c = f.status === 'downloading' ? ACC : f.status === 'queued' ? 'oklch(0.35 var(--nc) var(--nh))' : OK;
+        return {
+          ...f,
+          barStyle: 'height: 100%; width: ' + (f.v * 100).toFixed(1) + '%; background: ' + c + ';',
+          statusStyle: 'font-family: \'JetBrains Mono\', monospace; font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; width: 84px; text-align: right; color: '
+            + (f.status === 'queued' ? 'oklch(0.45 var(--nc) var(--nh))' : c) + ';'
+        };
+      }),
+
+      log: [
+        { t: '10:49', msg: 'Conn 3 renegotiated after 12s of no bytes', c: WARN },
+        { t: '10:46', msg: 'config.json verified — sha256 match', c: OK },
+        { t: '10:45', msg: 'README.md verified — sha256 match', c: OK },
+        { t: '10:43', msg: 'Split consolidated.safetensors into 4 ranges', c: DIM },
+        { t: '10:42', msg: 'Launched aria2c (RPC 8717) — 9 files, URLs re-resolved', c: DIM },
+        { t: '10:42', msg: 'Job created — 9 files queued, 17.7 GB total', c: DIM }
+      ].map(e => ({ ...e, dot: 'width: 5px; height: 5px; flex: none; background: ' + e.c + ';' })),
+
+      library: [
+        { name: 'deepseek-ai/DeepSeek-V3.1-Base', path: '…\\longrebuttal\\deepseek-v3.1-base', size: '129.4 GB', check: 'SHA256 ok', when: 'Aug 29 · 04:11' },
+        { name: 'Qwen/Qwen3-14B', path: '…\\longrebuttal\\qwen3-14b', size: '28.6 GB', check: 'SHA256 ok', when: 'Aug 28 · 22:07' },
+        { name: 'openai/whisper-large-v3', path: '…\\longrebuttal\\whisper-large-v3', size: '6.2 GB', check: 'SHA256 ok', when: 'Aug 27 · 13:52' },
+        { name: 'datasets/the-pile-uncopyrighted', path: '…\\longrebuttal\\pile-uncopyrighted', size: '211.0 GB', check: 'Not hashed', when: 'Aug 24 · 09:30' },
+        { name: 'black-forest-labs/FLUX.1-dev', path: '…\\longrebuttal\\flux-1-dev', size: '23.8 GB', check: 'SHA256 ok', when: 'Aug 22 · 18:44' },
+        { name: 'unsloth/gemma-3-27b-it-GGUF', path: '…\\longrebuttal\\gemma-3-27b-gguf', size: '13.8 GB', check: '1 mismatch', when: 'Aug 20 · 07:19' }
+      ].map(i => ({
+        ...i,
+        checkStyle: 'font-family: \'JetBrains Mono\', monospace; font-size: 11.5px; color: '
+          + (i.check === 'SHA256 ok' ? OK : i.check === '1 mismatch' ? WARN : 'oklch(0.48 var(--nc) var(--nh))') + ';'
+      })),
+
+      connOpts: [1, 2, 4, 8, 16].map(n => ({ n: String(n), style: this.pill(s.conn === n), pick: () => this.setState({ conn: n }) })),
+      stallOpts: ['Low', 'Normal', 'High'].map(n => ({ n, style: this.pill(s.stall === n), pick: () => this.setState({ stall: n }) })),
+
+      toggleVerify: () => this.setState(st => ({ verify: !st.verify })),
+      verifyTrack: 'width: 46px; height: 24px; border: 1px solid ' + (s.verify ? 'oklch(0.42 0.10 var(--ah))' : 'oklch(0.30 var(--nc) var(--nh))')
+        + '; background: ' + (s.verify ? 'oklch(0.70 0.17 var(--ah) / 0.15)' : 'transparent') + '; cursor: pointer; display: flex; align-items: center; padding: 3px;'
+        + (s.verify ? ' justify-content: flex-end;' : ''),
+      verifyKnob: 'width: 16px; height: 16px; background: ' + (s.verify ? ACC : 'oklch(0.42 var(--nc) var(--nh))') + ';',
+
+      toggleQuiet: () => this.setState(st => ({ quiet: !st.quiet })),
+      quietTrack: 'width: 46px; height: 24px; flex: none; border: 1px solid ' + (s.quiet ? 'oklch(0.42 0.10 var(--ah))' : 'oklch(0.30 var(--nc) var(--nh))')
+        + '; background: ' + (s.quiet ? 'oklch(0.70 0.17 var(--ah) / 0.15)' : 'transparent') + '; cursor: pointer; display: flex; align-items: center; padding: 3px;'
+        + (s.quiet ? ' justify-content: flex-end;' : ''),
+      quietKnob: 'width: 16px; height: 16px; background: ' + (s.quiet ? ACC : 'oklch(0.42 var(--nc) var(--nh))') + ';'
+    };
+  }
+}
+
+</script>
+</body>
+</html>

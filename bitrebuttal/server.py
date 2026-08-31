@@ -1,6 +1,6 @@
 """FastAPI wiring: routes -> engine methods, exception mapping, static UI.
 
-The engine (``longrebuttal/engine.py``) owns all the logic; this module is only
+The engine (``bitrebuttal/engine.py``) owns all the logic; this module is only
 HTTP shape. Two public callables:
 
     create_app(engine)  -> FastAPI   (no side effects; tests use an unstarted Engine)

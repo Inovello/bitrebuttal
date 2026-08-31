@@ -126,7 +126,7 @@ def parse_input(raw: str) -> Tuple[str, Dict[str, str]]:
 
 
 def _hf_headers() -> Dict[str, str]:
-    h = {"User-Agent": "longrebuttal/0.1"}
+    h = {"User-Agent": "bitrebuttal/0.1"}
     tok = os.environ.get("HF_TOKEN") or os.environ.get("HUGGING_FACE_HUB_TOKEN")
     if tok:
         h["Authorization"] = f"Bearer {tok}"
@@ -201,7 +201,7 @@ def head_direct(url: str, client: Optional[httpx.Client] = None) -> ManifestFile
     own = client is None
     client = client or httpx.Client(timeout=TIMEOUT, follow_redirects=True, trust_env=False)
     headers = _hf_headers() if HF_HOST in urlparse(url).netloc.lower() else \
-        {"User-Agent": "longrebuttal/0.1"}
+        {"User-Agent": "bitrebuttal/0.1"}
     try:
         resp = client.head(url, headers=headers)
         if resp.status_code in (403, 405, 501) or (

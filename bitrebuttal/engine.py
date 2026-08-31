@@ -38,7 +38,7 @@ from .resolve import Manifest, resolve
 from .state import (COMPLETE_MARKER, FileEntry, Job, Store, new_job_id, normalize_settings)
 from .verify import control_file, verify_file, write_completion_marker
 
-LOG = logging.getLogger("longrebuttal.engine")
+LOG = logging.getLogger("bitrebuttal.engine")
 
 STALL_FLOOR_BPS = 10 * 1024          # absolute floor: 10 KB/s
 STALL_FRACTION = 0.05                # 5% of trailing 30-min median aggregate speed

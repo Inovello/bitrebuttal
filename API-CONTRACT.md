@@ -1,4 +1,4 @@
-# Long Rebuttal — API Contract (v1, frozen)
+# Bit Rebuttal — API Contract (v1, frozen)
 
 Both the backend and the frontend implement THIS file. JSON field names are camelCase and match
 `design-reference/mock-data.js` **verbatim** — the frontend was designed against those shapes, and the

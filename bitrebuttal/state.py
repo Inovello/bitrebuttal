@@ -26,8 +26,8 @@ STATE_VERSION = 1
 
 
 def data_dir() -> Path:
-    """%LOCALAPPDATA%\\longrebuttal (Windows), ~/Library/Application Support (macOS), ~/.local/share (Linux)."""
-    override = os.environ.get("LONGREBUTTAL_DATA_DIR")
+    """%LOCALAPPDATA%\\bitrebuttal (Windows), ~/Library/Application Support (macOS), ~/.local/share (Linux)."""
+    override = os.environ.get("BITREBUTTAL_DATA_DIR")
     if override:
         return Path(override)
     if sys.platform == "win32":
@@ -42,7 +42,7 @@ def default_destination() -> Path:
     return Path.home() / "Downloads" / APP_NAME
 
 
-COMPLETE_MARKER = ".longrebuttal-complete"
+COMPLETE_MARKER = ".bitrebuttal-complete"
 PORTFILE = "portfile"
 
 # ---------------------------------------------------------------- atomic io
@@ -230,7 +230,7 @@ class Store:
             atomic_write_json(self.settings_path, s)
         return s
 
-    # -- portfile (so headless `longrebuttal add/status` can find a live instance)
+    # -- portfile (so headless `bitrebuttal add/status` can find a live instance)
     def write_portfile(self, port: int) -> None:
         atomic_write_json(self.portfile_path, {"port": int(port), "pid": os.getpid(),
                                                "started": time.time()})

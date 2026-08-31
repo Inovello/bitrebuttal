@@ -1,4 +1,4 @@
-"""Acceptance tests for longrebuttal.server (the FastAPI wiring).
+"""Acceptance tests for bitrebuttal.server (the FastAPI wiring).
 
 Offline-safe: no network, no aria2c launch, no engine.start(). The server
 module must expose `create_app(engine) -> FastAPI` (no side effects) and
@@ -11,8 +11,8 @@ import pytest
 fastapi = pytest.importorskip("fastapi")
 from fastapi.testclient import TestClient
 
-from longrebuttal.engine import Engine
-from longrebuttal import server
+from bitrebuttal.engine import Engine
+from bitrebuttal import server
 
 
 @pytest.fixture()

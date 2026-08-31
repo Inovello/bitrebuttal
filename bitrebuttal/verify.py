@@ -82,16 +82,16 @@ def verify_file(path: os.PathLike | str, expected_size: int = 0,
 
 # ---------------------------------------------------------------- completion marker
 
-MARKER_NAME = ".longrebuttal-complete"
+MARKER_NAME = ".bitrebuttal-complete"
 
 
 def write_completion_marker(dest: os.PathLike | str, job_id: str, job_name: str,
                             files: List[Dict[str, Any]], extra: Optional[Dict[str, Any]] = None
                             ) -> Path:
-    """`.longrebuttal-complete` in the destination dir: timestamp + per-file results."""
+    """`.bitrebuttal-complete` in the destination dir: timestamp + per-file results."""
     from . import __version__
     payload: Dict[str, Any] = {
-        "tool": "longrebuttal",
+        "tool": "bitrebuttal",
         "version": __version__,
         "jobId": job_id,
         "name": job_name,

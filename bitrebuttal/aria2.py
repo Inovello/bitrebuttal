@@ -23,7 +23,7 @@ from typing import Any, Dict, List, Optional, Sequence
 
 import httpx
 
-LOG = logging.getLogger("longrebuttal.aria2")
+LOG = logging.getLogger("bitrebuttal.aria2")
 
 GRACEFUL_TIMEOUT = 45.0  # seconds; field notes 5.3 / systemd TimeoutStopSec
 

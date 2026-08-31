@@ -4,7 +4,7 @@
     python tests/test_e2e.py
 
 Downloads ~3.5 MB from hf-internal-testing/tiny-random-gpt2 into a temp dir, waits
-for COMPLETE, then checks the `.longrebuttal-complete` marker and the SHA256 result.
+for COMPLETE, then checks the `.bitrebuttal-complete` marker and the SHA256 result.
 Skips gracefully when aria2c is missing or HF is unreachable.
 """
 
@@ -21,9 +21,9 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from longrebuttal.engine import Engine  # noqa: E402
-from longrebuttal.resolve import ResolveError  # noqa: E402
-from longrebuttal.verify import MARKER_NAME, read_completion_marker, sha256_file  # noqa: E402
+from bitrebuttal.engine import Engine  # noqa: E402
+from bitrebuttal.resolve import ResolveError  # noqa: E402
+from bitrebuttal.verify import MARKER_NAME, read_completion_marker, sha256_file  # noqa: E402
 
 FILE_URL = ("https://huggingface.co/hf-internal-testing/tiny-random-gpt2/resolve/main/"
             "pytorch_model.bin")
@@ -48,7 +48,7 @@ def skip(msg: str):
 
 
 def scratch_root() -> Path:
-    base = os.environ.get("LONGREBUTTAL_TEST_DIR") or tempfile.gettempdir()
+    base = os.environ.get("BITREBUTTAL_TEST_DIR") or tempfile.gettempdir()
     root = Path(base) / f"lr-e2e-{int(time.time())}"
     root.mkdir(parents=True, exist_ok=True)
     return root
@@ -156,7 +156,7 @@ def test_corrupt_file_fails_job_loudly():
     if not shutil.which("aria2c"):
         skip("aria2c not on PATH")
         return
-    from longrebuttal.state import FileEntry, Job
+    from bitrebuttal.state import FileEntry, Job
 
     root = scratch_root()
     dest = root / "dest"
