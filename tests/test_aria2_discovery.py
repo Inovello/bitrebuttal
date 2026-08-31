@@ -11,13 +11,40 @@ import bitrebuttal.engine as engine
 
 
 def _fake_aria2c(tmp_path):
-    fake = tmp_path / "aria2c"
+    import sys
+    fake = tmp_path / ("aria2c.exe" if sys.platform == "win32" else "aria2c")
     fake.write_text("#!/bin/sh\n")
     fake.chmod(0o755)
     return str(fake)
 
 
 def test_resolve_aria2c_prefers_path_lookup(monkeypatch):
+    monkeypatch.setattr(engine.shutil, "which", lambda c: "/somewhere/aria2c")
+    assert engine.resolve_aria2c() == "/somewhere/aria2c"
+
+
+def test_bundled_aria2c_wins_in_frozen_build(monkeypatch, tmp_path):
+    """v1.1.0: the aria2c shipped inside the app beats any PATH lookup.
+
+    The bundle is the tested combination and exists so non-technical users
+    never have to install anything - it must be picked deterministically.
+    """
+    fake = _fake_aria2c(tmp_path)
+    monkeypatch.setattr(engine.sys, "frozen", True, raising=False)
+    monkeypatch.setattr(engine.sys, "_MEIPASS", str(tmp_path), raising=False)
+    monkeypatch.setattr(engine.shutil, "which", lambda c: "/somewhere/else/aria2c")
+    assert engine.bundled_aria2c() == fake
+    assert engine.resolve_aria2c() == fake
+
+
+def test_bundled_aria2c_empty_outside_frozen_build(monkeypatch):
+    monkeypatch.delattr(engine.sys, "frozen", raising=False)
+    assert engine.bundled_aria2c() == ""
+
+
+def test_resolve_falls_back_to_path_when_bundle_lacks_aria2c(monkeypatch, tmp_path):
+    monkeypatch.setattr(engine.sys, "frozen", True, raising=False)
+    monkeypatch.setattr(engine.sys, "_MEIPASS", str(tmp_path), raising=False)
     monkeypatch.setattr(engine.shutil, "which", lambda c: "/somewhere/aria2c")
     assert engine.resolve_aria2c() == "/somewhere/aria2c"
 

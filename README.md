@@ -30,7 +30,7 @@ Grab the binary for your OS from the [GitHub releases page](https://github.com/I
 
 The `-cli` binaries (`BitRebuttal-cli-*`) are the full console CLI. `bitrebuttal serve` (or the CLI's `serve`) still gives the plain browser UI.
 
-On every platform you still need `aria2c` on your PATH: `winget install aria2` (Windows), `brew install aria2` (macOS), or `sudo apt install aria2` (Linux).
+The Windows and macOS apps ship with `aria2c` bundled (v1.1.0+) — nothing else to install. The Linux binary still needs `aria2c` on your PATH: `sudo apt install aria2`. (aria2 is GPLv2 with the OpenSSL linking exception; its license ships inside the bundles as `aria2-COPYING`.)
 
 ### Option 2 - install the CLI (pip)
 

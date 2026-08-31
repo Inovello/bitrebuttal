@@ -44,21 +44,46 @@ jobs:
       - name: Install build dependencies
         run: pip install . pyinstaller
 
-      - name: Build with PyInstaller
-        run: pyinstaller --clean --noconfirm bitrebuttal.spec
-
-      # The smoke tests below actually start the built server, so aria2c has to
-      # be on PATH - Engine.start() preflights for it and refuses without it.
-      - name: Install aria2 (smoke-test dependency)
+      # Vendor aria2c INTO the bundle so users install nothing themselves
+      # (engine.resolve_aria2c prefers the bundled copy). Windows takes the
+      # official aria2 release build, checksum-pinned.
+      - name: Vendor aria2c (Windows)
+        if: runner.os == 'Windows'
         shell: bash
         run: |
           set -euo pipefail
-          case "${{ runner.os }}" in
-            macOS)   brew install aria2 ;;
-            Linux)   sudo apt-get update && sudo apt-get install -y aria2 ;;
-            Windows) choco install aria2 -y ;;
-          esac
-          aria2c --version
+          mkdir -p vendor
+          curl -sSL -o aria2.zip https://github.com/aria2/aria2/releases/download/release-1.37.0/aria2-1.37.0-win-64bit-build1.zip
+          echo "67d015301eef0b612191212d564c5bb0a14b5b9c4796b76454276a4d28d9b288 *aria2.zip" | sha256sum -c
+          unzip -q aria2.zip
+          cp aria2-1.37.0-win-64bit-build1/aria2c.exe vendor/
+          vendor/aria2c.exe --version
+
+      # macOS: brew's arch-correct binary with its dylibs made relocatable
+      # (dylibbundler) and ad-hoc signed. brew aria2 is uninstalled again right
+      # away so the smoke test below proves the BUNDLED copy stands alone.
+      - name: Vendor aria2c (macOS)
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          set -euo pipefail
+          brew install aria2 dylibbundler
+          mkdir -p vendor
+          cp "$(brew --prefix)/bin/aria2c" vendor/
+          dylibbundler -od -b -x vendor/aria2c -d vendor/ -p @executable_path/
+          for f in vendor/aria2c vendor/*.dylib; do codesign -f -s - "$f"; done
+          brew uninstall aria2
+          vendor/aria2c --version
+
+      - name: Build with PyInstaller
+        run: pyinstaller --clean --noconfirm bitrebuttal.spec
+
+      # Linux ships unbundled (console build, package-manager audience); the
+      # smoke test still needs aria2c on PATH for Engine.start()'s preflight.
+      - name: Install aria2 (Linux smoke-test dependency)
+        if: runner.os == 'Linux'
+        shell: bash
+        run: sudo apt-get update && sudo apt-get install -y aria2
 
       - name: Smoke test (macOS)
         if: runner.os == 'macOS'
@@ -75,6 +100,7 @@ jobs:
           kill "$srv" 2>/dev/null || true
           if [ "$ok" -ne 1 ]; then echo "app binary never answered /api/status"; exit 1; fi
           grep -q '"backend"' status.json || { echo "unexpected /api/status body:"; cat status.json; exit 1; }
+          grep -q '"aria2cVersion":"1' status.json || { echo "bundled aria2c not detected:"; cat status.json; exit 1; }
           ./dist/bitrebuttal-cli --version
 
       - name: Smoke test (Windows)
@@ -93,6 +119,7 @@ jobs:
           kill "$srv" 2>/dev/null || true
           if [ "$ok" -ne 1 ]; then echo "app binary never answered /api/status"; exit 1; fi
           grep -q '"backend"' status.json || { echo "unexpected /api/status body:"; cat status.json; exit 1; }
+          grep -q '"aria2cVersion":"1' status.json || { echo "bundled aria2c not detected:"; cat status.json; exit 1; }
           ./dist/bitrebuttal-cli.exe --version
 
       - name: Smoke test (Linux)

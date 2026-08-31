@@ -216,14 +216,34 @@ MAC_ARIA2_PATHS = ("/opt/homebrew/bin/aria2c",    # Homebrew, Apple Silicon
                    "/opt/local/bin/aria2c")       # MacPorts
 
 
+def bundled_aria2c() -> str:
+    """Path of the aria2c shipped inside the frozen app bundle, or "".
+
+    Release builds vendor aria2c (see release.yml + bitrebuttal.spec) so users
+    never install anything themselves. PyInstaller extracts bundled binaries
+    into ``sys._MEIPASS``.
+    """
+    if not getattr(sys, "frozen", False):
+        return ""
+    base = getattr(sys, "_MEIPASS", "") or str(Path(sys.executable).parent)
+    exe = Path(base) / ("aria2c.exe" if sys.platform == "win32" else "aria2c")
+    return str(exe) if exe.is_file() else ""
+
+
 def resolve_aria2c(candidate: str = "aria2c") -> str:
     """Absolute path of the aria2c binary, or "" when none can be found.
 
-    PATH lookup first. On macOS a Finder-launched .app runs with launchd's
-    minimal PATH (/usr/bin:/bin:/usr/sbin:/sbin), which does not include
-    Homebrew's bin dir - a brew-installed aria2 is invisible to `which` there,
-    so the well-known install locations are checked directly before giving up.
+    The copy bundled into the frozen app wins - it is the tested combination
+    and the reason non-technical users need no install step. Then PATH. On
+    macOS a Finder-launched .app runs with launchd's minimal PATH
+    (/usr/bin:/bin:/usr/sbin:/sbin), which does not include Homebrew's bin
+    dir - a brew-installed aria2 is invisible to `which` there, so the
+    well-known install locations are checked directly before giving up.
     """
+    if candidate == "aria2c":              # a custom path/name is an explicit override
+        exe = bundled_aria2c()
+        if exe:
+            return exe
     exe = shutil.which(candidate)
     if exe:
         return exe

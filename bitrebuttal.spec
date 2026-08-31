@@ -8,6 +8,7 @@
   BitRebuttal.app bundle.
 """
 
+import os
 import sys
 
 # Windows exes take the .ico; the macOS app bundle takes the .icns (EXE icon
@@ -15,6 +16,23 @@ import sys
 icon_file = 'packaging/icon.ico' if sys.platform == 'win32' else None
 
 datas = [('bitrebuttal/static', 'bitrebuttal/static')]
+
+# Vendored aria2c (release.yml drops it into vendor/ before building) so users
+# install nothing themselves. Optional: a build without vendor/ still works and
+# falls back to PATH lookup at runtime (engine.resolve_aria2c).
+binaries = []
+_vendor_aria2 = os.path.join('vendor', 'aria2c.exe' if sys.platform == 'win32'
+                             else 'aria2c')
+if os.path.isfile(_vendor_aria2):
+    binaries.append((_vendor_aria2, '.'))
+    # aria2 is GPLv2 (with the OpenSSL linking exception): its license rides
+    # along in every bundle that carries the binary.
+    datas += [('packaging/aria2-COPYING', '.'),
+              ('packaging/aria2-LICENSE.OpenSSL', '.')]
+if sys.platform == 'darwin' and os.path.isdir('vendor'):
+    # dylibbundler parks aria2c's non-system dylibs next to it (release.yml).
+    binaries += [(os.path.join('vendor', f), '.')
+                 for f in sorted(os.listdir('vendor')) if f.endswith('.dylib')]
 hiddenimports = [
     'uvicorn.logging',
     'uvicorn.loops',
@@ -35,6 +53,7 @@ def _analysis(entry_script):
     return Analysis(
         [entry_script],
         pathex=[],
+        binaries=binaries,
         datas=datas,
         hiddenimports=hiddenimports,
         hookspath=[],
