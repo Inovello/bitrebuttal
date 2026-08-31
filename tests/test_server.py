@@ -74,7 +74,7 @@ def test_static_ui_served_at_root(client):
     r = client.get("/")
     assert r.status_code == 200
     assert "text/html" in r.headers["content-type"]
-    assert "LONG" in r.text.upper()
+    assert "BIT" in r.text.upper()
     # api routes must win over the static mount
     assert client.get("/api/status").headers["content-type"].startswith("application/json")
 
