@@ -789,3 +789,14 @@ button { font-family: var(--sans); }
 .shellbar-btn.is-close:hover { background: oklch(0.55 0.19 25); color: oklch(0.98 0.01 25); }
 body.shell .app { min-height: calc(100vh - 34px); }
 body.shell .sidebar { height: calc(100vh - 34px); top: 34px; }
+
+/* ── themed scrollbars (Chromium/WebView2 + Firefox fallback) ───────────── */
+* { scrollbar-width: thin; scrollbar-color: oklch(0.30 var(--nc) var(--nh)) transparent; }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb {
+  background: oklch(0.30 var(--nc) var(--nh));
+  border: 3px solid var(--bg);           /* slim inset look */
+}
+::-webkit-scrollbar-thumb:hover { background: oklch(0.45 0.08 var(--ah)); }
+::-webkit-scrollbar-corner { background: var(--bg); }
