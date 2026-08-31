@@ -269,3 +269,54 @@ def test_static_ui_served_at_root(client):
 
 if __name__ == "__main__":
     raise SystemExit(pytest.main([__file__, "-q"]))
+
+
+def test_quiet_hours_limit_round_trip(client):
+    r = client.put("/api/settings", json={"quietHours": {
+        "enabled": True, "start": "22:00", "end": "06:00", "limitMBs": 12}})
+    assert r.status_code == 200
+    assert r.json()["quietHours"] == {"enabled": True, "start": "22:00",
+                                      "end": "06:00", "limitMBs": 12}
+    over = client.put("/api/settings", json={"quietHours": {
+        "enabled": False, "start": "23:00", "end": "07:30", "limitMBs": 500}})
+    assert over.json()["quietHours"]["limitMBs"] == 50
+    missing = client.put("/api/settings", json={"quietHours": {
+        "enabled": False, "start": "23:00", "end": "07:30"}})
+    assert missing.json()["quietHours"]["limitMBs"] == 5
+
+
+def test_effective_limit_uses_configured_quiet_speed():
+    from bitrebuttal.engine import effective_limit_mbs
+    s = {"bandwidthCapMBs": 40,
+         "quietHours": {"enabled": True, "start": "00:00", "end": "23:59", "limitMBs": 12}}
+    assert effective_limit_mbs(s) == 12
+
+
+def test_job_connections_endpoint(engine, client):
+    from bitrebuttal.state import FileEntry, Job
+
+    job = Job(id="job-conn1", name="o/r", url="o/r", dest=str(engine.store.dir),
+              status="PAUSED",
+              files=[FileEntry(name="a.bin", url="https://x/a.bin", size=5, state="queued")])
+    with engine.lock:
+        engine.jobs[job.id] = job
+        engine._order.insert(0, job.id)
+
+    def payload():
+        return [x for x in client.get("/api/status").json()["jobs"]
+                if x["id"] == "job-conn1"][0]
+
+    assert payload()["connections"] == 4              # settings default
+
+    r = client.post("/api/jobs/job-conn1/connections", json={"connections": 8})
+    assert r.status_code == 200 and r.json() == {"ok": True}
+    assert payload()["connections"] == 8
+
+    client.post("/api/jobs/job-conn1/connections", json={"connections": 99})
+    assert payload()["connections"] == 16             # clamped high
+    client.post("/api/jobs/job-conn1/connections", json={"connections": 0})
+    assert payload()["connections"] == 1              # clamped low
+
+    r = client.post("/api/jobs/nope/connections", json={"connections": 4})
+    assert 400 <= r.status_code < 500
+    assert isinstance(r.json()["error"], str)

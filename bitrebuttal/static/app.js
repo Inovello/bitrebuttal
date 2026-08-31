@@ -175,6 +175,7 @@
     resumeAll:     function ()        { return send('POST', 'api/jobs/resume-all'); },
     reverify:      function (id)      { return send('POST', jobPath(id, '/reverify')); },
     repair:        function (id)      { return send('POST', jobPath(id, '/repair')); },
+    setConnections: function (id, n)  { return send('POST', jobPath(id, '/connections'), { connections: n }); },
     openFolder:    function (id)      { return send('POST', jobPath(id, '/open-folder')); },
     clearFinished: function ()        { return send('POST', 'api/jobs/clear-finished'); },
     browseDest:    function ()        { return send('POST', 'api/browse-dest'); },
@@ -386,6 +387,12 @@
         return later({ ok: true }, 200);
       },
       openFolder: function () { return later({ ok: true }, 120); },
+      setConnections: function (id, n) {
+        db.jobs = db.jobs.map(function (j) {
+          return j.id === id ? Object.assign({}, j, { connections: n }) : j;
+        });
+        return later({ ok: true }, 120);
+      },
       repair: function (id) {
         db.jobs = db.jobs.map(function (j) {
           if (j.id !== id) return j;
@@ -898,9 +905,19 @@
     color(chip, d.color);
     setText(chipLabel, d.statusLabel);
 
-    // re-verify / repair actions: only meaningful on settled jobs
+    // actions live IN the detail view: pause/resume, cancel, re-verify, repair
     var corrupt = (target.files || []).filter(function (f) { return f.state === 'corrupt'; }).length;
     var terminal = target.status === 'COMPLETE' || target.status === 'FAILED';
+    var pauseBtn = field('detail-pause');
+    if (pauseBtn) {
+      var pausable = ['DOWNLOADING', 'RECOVERING', 'VERIFYING', 'PAUSED'].indexOf(target.status) !== -1;
+      pauseBtn.hidden = !pausable;
+      pauseBtn.dataset.jobId = target.id;
+      pauseBtn.dataset.paused = target.status === 'PAUSED' ? '1' : '0';
+      pauseBtn.textContent = target.status === 'PAUSED' ? 'Resume' : 'Pause';
+    }
+    var cancelBtn = field('detail-cancel');
+    if (cancelBtn) { cancelBtn.hidden = false; cancelBtn.dataset.jobId = target.id; }
     var rvBtn = field('detail-reverify');
     if (rvBtn) { rvBtn.hidden = !terminal; rvBtn.dataset.jobId = target.id; }
     var rpBtn = field('detail-repair');
@@ -908,6 +925,13 @@
       rpBtn.hidden = !(terminal && corrupt > 0);
       rpBtn.dataset.jobId = target.id;
       rpBtn.textContent = 'Redownload corrupt (' + corrupt + ')';
+    }
+    var connPills = field('detail-conn-pills');
+    if (connPills) {
+      connPills.dataset.jobId = target.id;
+      Array.prototype.forEach.call(connPills.children, function (p) {
+        cls(p, 'is-on', Number(p.dataset.value) === Number(target.connections || 4));
+      });
     }
 
     var pctEl = field('detail-pct');
@@ -999,9 +1023,6 @@
     if (document.activeElement !== dest && dest.value !== (d.destination || '')) dest.value = d.destination || '';
     show(field('browse-btn'), !!state.backend.gui);
 
-    Array.prototype.forEach.call(field('conn-pills').children, function (p) {
-      cls(p, 'is-on', Number(p.dataset.value) === Number(d.connections));
-    });
     Array.prototype.forEach.call(field('stall-pills').children, function (p) {
       cls(p, 'is-on', p.dataset.value === d.stallSensitivity);
     });
@@ -1018,9 +1039,11 @@
     var quiet = s.quietHours || { enabled: false, start: '23:00', end: '07:30' };
     cls(field('quiet-toggle'), 'is-on', !!quiet.enabled);
     cls(qs('.quiet-ctl'), 'is-off', !quiet.enabled);
-    var qs1 = field('quiet-start'), qs2 = field('quiet-end');
+    var qs1 = field('quiet-start'), qs2 = field('quiet-end'), qs3 = field('quiet-limit');
     if (document.activeElement !== qs1 && qs1.value !== quiet.start) qs1.value = quiet.start || '';
     if (document.activeElement !== qs2 && qs2.value !== quiet.end) qs2.value = quiet.end || '';
+    var lim = String(quiet.limitMBs || 5);
+    if (qs3 && document.activeElement !== qs3 && qs3.value !== lim) qs3.value = lim;
 
     var installed = !!s.serviceInstalled;
     var svc = field('service-status');
@@ -1151,11 +1174,21 @@
         putSettings({ verifyChecksums: !state.settings.verifyChecksums }); break;
       case 'toggle-quiet':
         var q = state.settings.quietHours || {};
-        putSettings({ quietHours: { enabled: !q.enabled, start: q.start || '23:00', end: q.end || '07:30' } });
+        putSettings({ quietHours: { enabled: !q.enabled, start: q.start || '23:00',
+                                    end: q.end || '07:30', limitMBs: q.limitMBs || 5 } });
         break;
 
-      case 'set-conn':
-        draft().connections = Number(el.dataset.value); markDirty(); renderSettings(); break;
+      case 'cycle-conn': {
+        var order = [1, 2, 4, 8, 16];
+        var cur = Number(state.settings.connections) || 4;
+        var next = order[(order.indexOf(cur) + 1) % order.length];
+        putSettings({ connections: next });        // default for NEW downloads
+        break;
+      }
+      case 'job-conn':
+        api.setConnections(jobIdOf(el) || state.jobId, Number(el.dataset.value))
+          .then(poll).catch(poll);
+        break;
       case 'set-stall':
         draft().stallSensitivity = el.dataset.value; markDirty(); renderSettings(); break;
       case 'set-theme':
@@ -1183,11 +1216,13 @@
         renderConfirm();
         break;
       case 'set-quiet-time':
+      case 'set-quiet-limit':
         var q = state.settings.quietHours || {};
         putSettings({ quietHours: {
           enabled: !!q.enabled,
           start: field('quiet-start').value.trim(),
-          end: field('quiet-end').value.trim()
+          end: field('quiet-end').value.trim(),
+          limitMBs: Number(field('quiet-limit').value) || 5
         } });
         break;
     }

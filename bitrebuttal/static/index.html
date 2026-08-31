@@ -142,7 +142,8 @@
                 <span class="chip-glyph">→</span>
                 <span data-field="source-dest">…</span>
               </div>
-              <div class="chip">
+              <div class="chip chip-btn" data-action="cycle-conn"
+                   title="Connections for new downloads — click to change">
                 <span class="chip-glyph">×</span>
                 <span data-field="source-conn">4 conn</span>
               </div>
@@ -249,6 +250,8 @@
             <div class="detail-sub" data-field="detail-sub">—</div>
           </div>
           <div class="detail-head-right">
+            <button class="btn-mini" data-action="pause-job" data-field="detail-pause" hidden>Pause</button>
+            <button class="btn-mini" data-action="cancel-job" data-field="detail-cancel" hidden>Cancel</button>
             <button class="btn-mini" data-action="reverify" data-field="detail-reverify" hidden>Re-verify</button>
             <button class="btn-mini btn-repair" data-action="repair" data-field="detail-repair" hidden>Redownload corrupt</button>
             <div class="state-chip" data-field="detail-chip">
@@ -288,6 +291,16 @@
           <div class="stat">
             <div class="cell-label">Started</div>
             <div class="stat-value" data-field="stat-started">—</div>
+          </div>
+          <div class="stat">
+            <div class="cell-label">Connections</div>
+            <div class="pills pills-mini" data-field="detail-conn-pills">
+              <div class="pill" data-action="job-conn" data-value="1">1</div>
+              <div class="pill" data-action="job-conn" data-value="2">2</div>
+              <div class="pill" data-action="job-conn" data-value="4">4</div>
+              <div class="pill" data-action="job-conn" data-value="8">8</div>
+              <div class="pill" data-action="job-conn" data-value="16">16</div>
+            </div>
           </div>
         </div>
 
@@ -348,18 +361,10 @@
             </div>
           </div>
 
-          <div class="row">
-            <div>
-              <div class="row-title">Connections per download</div>
-              <div class="row-note">Higher is faster until the host throttles.</div>
-            </div>
-            <div class="pills" data-field="conn-pills">
-              <div class="pill" data-action="set-conn" data-value="1">1</div>
-              <div class="pill" data-action="set-conn" data-value="2">2</div>
-              <div class="pill" data-action="set-conn" data-value="4">4</div>
-              <div class="pill" data-action="set-conn" data-value="8">8</div>
-              <div class="pill" data-action="set-conn" data-value="16">16</div>
-            </div>
+          <div class="row" hidden><!-- connections moved: per-job in the detail view; the
+               source-bar chip sets the default for new downloads -->
+            <div></div>
+            <div class="pills" data-field="conn-pills" hidden></div>
           </div>
 
           <div class="row">
@@ -405,7 +410,7 @@
           <div class="row">
             <div>
               <div class="row-title">Quiet hours</div>
-              <div class="row-note">Throttle to 5 MB/s inside this window.</div>
+              <div class="row-note">Throttle downloads inside this window.</div>
             </div>
             <div class="quiet-ctl">
               <div class="toggle" data-action="toggle-quiet" data-field="quiet-toggle" role="switch" tabindex="0">
@@ -414,6 +419,9 @@
               <input class="text-input time-input" data-field="quiet-start" data-action="set-quiet-time" value="23:00" />
               <span class="quiet-arrow">→</span>
               <input class="text-input time-input" data-field="quiet-end" data-action="set-quiet-time" value="07:30" />
+              <span class="quiet-arrow">at</span>
+              <input class="text-input time-input" data-field="quiet-limit" data-action="set-quiet-limit" value="5" />
+              <span class="quiet-unit">MB/s</span>
             </div>
           </div>
 

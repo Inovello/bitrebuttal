@@ -37,7 +37,7 @@ window.BR_MOCK = {
     serviceInstalled: false,
     verifyChecksums: true,
     bandwidthCapMBs: 0,
-    quietHours: { enabled: false, start: '23:00', end: '07:30' },
+    quietHours: { enabled: false, start: '23:00', end: '07:30', limitMBs: 5 },
     theme: 'mauve',
     hfTokenSet: false
   },

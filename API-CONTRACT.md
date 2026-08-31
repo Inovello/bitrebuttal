@@ -156,3 +156,21 @@ the `library` array (archived or not).
   or the id is unknown. This deletion is user-invoked — the "verification never deletes" rule applies
   to the automatic pass, not to an explicit repair request.
 - The detail view surfaces `Re-verify` (existing endpoint) and `Redownload corrupt (N)` on settled jobs.
+
+## v2.2: per-job connections + quiet-hours speed (added 2026-08-31, pre-1.0)
+
+- `settings.quietHours` gains `"limitMBs"` (int, clamped 1..50, default 5): the throttle applied
+  inside the window. PUT accepts it; the engine's quiet-hours enforcement uses it instead of the
+  fixed 5 MB/s.
+- The Settings "connections" UI is gone. `settings.connections` REMAINS in the payload as the
+  DEFAULT for new jobs (the source-bar "× N conn" chip cycles it via PUT).
+- Job objects gain `"connections"` (int 1..16, effective value). `POST /api/jobs` accepts an
+  optional `"connections"`; omitted -> the settings default.
+- `POST /api/jobs/{id}/connections` `{"connections": n}` -> 200 `{"ok": true}` (clamped 1..16;
+  unknown id -> 4xx error shape). Applies from the job's NEXT aria2c (re)launch; if the job is
+  actively transferring, the engine logs an event saying the new count applies on the next
+  relaunch (it may also trigger a clean relaunch — implementation's choice, logged either way).
+- aria2c `split` / `max-connection-per-server` become PER-DOWNLOAD options passed with each
+  file's addUri from the owning job's connections value.
+- Detail view now carries the job actions: Pause/Resume, Cancel, Re-verify, Redownload corrupt,
+  and the per-job connections pills (in the stats row).
