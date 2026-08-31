@@ -22,7 +22,7 @@ Three layers, each catching what the one below it misses. The outermost layer is
 
 ### Option 1 - download the app
 
-Grab the binary for your OS from the [GitHub releases page](https://github.com/). The binary is a single file, no installer:
+Grab the binary for your OS from the [GitHub releases page](https://github.com/Inovello/longrebuttal/releases). The binary is a single file, no installer:
 
 - **Windows:** run `LongRebuttal-windows-x64.exe`. Double-clicking it serves the UI and opens the browser.
 - **macOS:** `chmod +x` the binary. On first run, right-click the app and choose **Open** (or run `xattr -d com.apple.quarantine <file>`) — the binary is unsigned, so Gatekeeper asks the first time.
