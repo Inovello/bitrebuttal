@@ -87,3 +87,62 @@ job, starts the supervisor. 201 → the Job object.
   retrying; do not blank the last known jobs.
 - The UI performs NO calculations beyond percent (`doneBytes/totalBytes`) and byte/speed/ETA formatting.
   Keep the exact formatting helpers from the design (`gb()`, `speedLabel()`, `etaLabel()`).
+
+---
+
+# v2 additions (Bit Rebuttal redesign — frozen)
+
+v1 shapes above stay intact. v2 adds fields and endpoints; nothing is renamed or removed.
+
+## GET /api/status — added fields
+
+```jsonc
+{
+  "backend":  { /* v1 fields */, "aria2cVersion": "1.37.0",
+                "gui": false },                    // true when running inside the native shell
+  "disk":     { /* v1 fields */, "afterQueueBytes": 189100000000 },  // freeBytes minus bytes still to download
+  "settings": { /* v1 fields */,
+                "verifyChecksums": true,           // false -> size check only, hashing skipped
+                "bandwidthCapMBs": 0,              // 0 = uncapped; else 10..120, applied LIVE via aria2 RPC
+                "quietHours": { "enabled": false, "start": "23:00", "end": "07:30" },  // throttle to 5 MB/s inside window
+                "theme": "mauve",                  // mauve | graphite | ink | slate
+                "hfTokenSet": false },             // NEVER echo the token itself anywhere
+  "recents":  [ "unsloth/Qwen3.8-Flash-Next-GGUF", "..." ],   // last 6 distinct resolved sources, newest first
+  "completedToday": 3,
+  "connections": [ { "id": "c-01", "speedBps": 9300000, "host": "cas-bridge.xethub.hf.co" } ],
+                // per-server rates of the ACTIVE download (aria2 getServers), [] when idle.
+                // DISPLAY ONLY — never used as a health signal (field notes 5.1).
+  "library":  [ { "jobId": "job-a1b2c3", "name": "mistralai/Mixtral-8x22B", "path": "D:\models\...",
+                  "sizeBytes": 84600000000, "integrity": "sha256 3/3", // or "size-only" | "1 corrupt"
+                  "finishedLabel": "Aug 30 · 22:50" } ]        // COMPLETE and FAILED jobs, newest first
+}
+```
+
+Job objects gain `"archived": false`. The dashboard renders non-archived jobs; the Library view renders
+the `library` array (archived or not).
+
+## New/extended endpoints
+
+- `PUT /api/settings` accepts all new settings fields. `hfToken` is accepted as a WRITE-ONLY field
+  ("" clears it); it is stored in settings.json, used for HF metadata/resolve requests only (NOT passed
+  to aria2c — a global header would leak it to CDN redirect hosts), and never echoed back.
+  `bandwidthCapMBs` takes effect immediately on a running aria2c via `aria2.changeGlobalOption`
+  (`max-overall-download-limit`); quiet hours are enforced by the engine each watchdog poll
+  (inside window: 5 MB/s; outside: the configured cap).
+- `POST /api/jobs/pause-all` / `POST /api/jobs/resume-all` → `{"ok": true}` (applies to every job it can).
+- `POST /api/jobs/{id}/reverify` → re-runs the verification pass on a COMPLETE or FAILED job → `{"ok": true}`.
+- `POST /api/jobs/{id}/open-folder` → opens the job's dest in Explorer/Finder/xdg-open → `{"ok": true}`.
+- `POST /api/jobs/clear-finished` → sets `archived: true` on all COMPLETE jobs → `{"ok": true}`.
+  Files and library entries are untouched.
+- `POST /api/browse-dest` → native folder dialog when the GUI shell is attached → `{"path": "C:\..."}`;
+  400 `{"error": "..."}` when not running in the shell. Server wiring: `create_app(engine, folder_picker=None)`
+  — the shell passes a callable returning the chosen path or None; `backend.gui` is true iff it is set.
+
+## Frontend rules (additions)
+
+- Theme comes from `settings.theme` (PUT to change); apply the design's oklch variable sets for
+  mauve/graphite/ink/slate. Hide the Browse button when `backend.gui` is false.
+- The connection-health panel is informational only; render whatever `connections` contains, no coloring
+  by "slow" thresholds beyond neutral styling.
+- Dropped from the design, deliberately: queue drag-reordering, "Sort: priority", "Skip verify",
+  "Export manifest", "Verify all" (Library has per-item Re-verify).
