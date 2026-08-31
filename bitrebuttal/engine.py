@@ -607,6 +607,48 @@ class Engine:
         self.save()
         return {"ok": True}
 
+    def repair_job(self, job_id: str) -> Dict[str, Any]:
+        """Re-queue ONLY the corrupt files of a settled job. Verified files are untouched.
+
+        User-invoked deletion: the corrupt file(s) and their .aria2 control files are
+        removed from disk, the entries reset to queued, and the job's failure is cleared
+        so the supervisor re-resolves URLs and re-downloads just those files.
+        """
+        with self.lock:
+            job = self._job(job_id)
+            if job.status not in ("COMPLETE", "FAILED"):
+                raise EngineError("Repair is only available for a COMPLETE or FAILED job.")
+            corrupt = [f for f in job.files if f.state == "corrupt"]
+            if not corrupt:
+                raise EngineError("No corrupt files to redownload.")
+            for f in corrupt:
+                path = Path(job.dest) / f.name
+                for p in (path, control_file(path)):
+                    try:
+                        os.unlink(p)
+                    except OSError:
+                        pass                  # already gone: this file was lost/corrupt
+                f.state = "queued"
+                f.completed = 0
+                f.verified = False
+                f.hashed = False
+                f.verify_read = 0
+                f.attempts = 0
+                f.error = None
+            job.error = None
+            job.bytes_lost = 0
+            job.paused = False
+            job.completed_at = None
+            job.archived = False
+            job.status = "RECOVERING"         # _recompute refuses to leave COMPLETE
+            self.event(job, "warn",
+                       f"Repair: {len(corrupt)} corrupt file(s) deleted and re-queued for download")
+            self._recompute(job)
+            self._requeue = True
+            self._next_launch_at = 0.0
+        self.save()
+        return {"ok": True}
+
     def open_folder(self, job_id: str) -> Dict[str, Any]:
         with self.lock:
             dest = self._job(job_id).dest

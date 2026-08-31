@@ -128,6 +128,10 @@ def create_app(engine: Engine,
     async def api_reverify(job_id: str) -> Dict[str, Any]:
         return engine.reverify_job(job_id)
 
+    @app.post("/api/jobs/{job_id}/repair")
+    async def api_repair(job_id: str) -> Dict[str, Any]:
+        return engine.repair_job(job_id)
+
     @app.post("/api/jobs/{job_id}/open-folder")
     async def api_open_folder(job_id: str) -> Dict[str, Any]:
         return engine.open_folder(job_id)
