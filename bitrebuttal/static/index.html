@@ -4,336 +4,555 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=1280">
 <title>Bit Rebuttal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="" />
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
 
-<div class="lr-app">
+<div class="app">
 
-  <!-- ────────────────────────────── SIDEBAR ────────────────────────────── -->
+  <!-- ══════════════════════════════ SIDEBAR ══════════════════════════════ -->
   <aside class="sidebar">
-    <div class="sidebar-head">
-      <div class="app-name" data-field="app-name">BIT&nbsp;REBUTTAL</div>
-      <div class="app-tagline" data-field="app-tagline">Downloads that finish.</div>
+    <div>
+      <div class="brand">
+        <div class="brand-row">
+          <div class="brand-mark"></div>
+          <div class="brand-name">Bit Rebuttal</div>
+        </div>
+        <div class="brand-tag">Downloads that finish</div>
+      </div>
+
+      <nav class="nav">
+        <div class="nav-item is-active" data-action="nav-dashboard" data-field="nav-dashboard">
+          <span class="nav-num">01</span>
+          <span>Dashboard</span>
+          <span class="nav-badge" data-field="nav-active-count">00</span>
+        </div>
+        <div class="nav-item" data-action="nav-library" data-field="nav-library">
+          <span class="nav-num">02</span>
+          <span>Library</span>
+          <span></span>
+        </div>
+        <div class="nav-item" data-action="nav-settings" data-field="nav-settings">
+          <span class="nav-num">03</span>
+          <span>Settings</span>
+          <span></span>
+        </div>
+      </nav>
+
+      <div class="cap">
+        <div class="cap-label">Bandwidth cap</div>
+        <div class="cap-value-row">
+          <span class="cap-value" data-field="cap-value">∞</span>
+          <span class="cap-unit" data-field="cap-unit">MB/s</span>
+        </div>
+        <input class="cap-slider" type="range" min="10" max="120" step="5" value="120"
+               data-field="cap-slider" data-action="set-cap" aria-label="Bandwidth cap" />
+        <div class="cap-scale"><span>10</span><span>Uncapped</span></div>
+      </div>
     </div>
 
-    <nav class="sidebar-nav">
-      <button class="nav-btn is-active" data-action="nav-dashboard">DASHBOARD</button>
-      <button class="nav-btn" data-action="nav-settings">SETTINGS</button>
-    </nav>
-
-    <div class="sidebar-spacer"></div>
-
-    <div class="sidebar-foot">
+    <div class="sidefoot">
       <div class="heartbeat" data-field="heartbeat"></div>
-      <div class="backend-status" data-field="backend-status">
-        <span class="backend-dot" data-field="backend-dot"></span>
-        <span data-field="backend-status-text">Supervisor is watching</span>
+      <div class="sidefoot-row">
+        <div>
+          <div class="sup-line">
+            <div class="sup-dot" data-field="supervisor-dot"></div>
+            <span class="sup-text" data-field="supervisor-text">Supervisor watching</span>
+          </div>
+          <div class="sup-sub">Heartbeat <span data-field="heartbeat-age">0</span>s</div>
+        </div>
+        <div class="face" data-field="face"></div>
       </div>
-      <div class="backend-sub">Heartbeat <span data-field="beat-age">0s ago</span> · v<span data-field="backend-version">—</span></div>
-      <div class="service-badge" data-field="service-badge">Not installed</div>
+      <div class="boot-line" data-field="boot-service">Boot service not installed</div>
     </div>
   </aside>
 
-  <!-- ─────────────────────────────── MAIN ──────────────────────────────── -->
-  <div class="main">
+  <!-- ═══════════════════════════════ MAIN ════════════════════════════════ -->
+  <main class="main">
 
-    <div class="telemetry">
-      <div class="telemetry-cell">
-        <div class="telemetry-label">TRANSFERRING</div>
-        <div class="telemetry-value" data-field="telemetry-active">00 / 00</div>
-      </div>
-      <div class="telemetry-cell">
-        <div class="telemetry-label">AGGREGATE</div>
-        <div class="telemetry-value is-accent" data-field="telemetry-aggregate">—</div>
-      </div>
-      <div class="telemetry-cell">
-        <div class="telemetry-label">DISK FREE</div>
-        <div class="telemetry-value" data-field="telemetry-disk">0.0 GB</div>
-      </div>
-      <div class="telemetry-cell is-last">
-        <div class="telemetry-label">AUTO-RECOVERIES</div>
-        <div class="telemetry-value" data-field="telemetry-recoveries">0</div>
-      </div>
-    </div>
-
-    <!-- ───────────────────────── DASHBOARD ───────────────────────── -->
-    <section class="view is-active" id="view-dashboard" data-screen-label="Dashboard">
-
-      <div class="add-panel" data-field="add-panel">
-        <div class="add-row">
-          <span class="micro-label">SOURCE</span>
-          <span class="prompt-caret">&gt;</span>
-          <input class="url-input" data-field="url-input" type="text" spellcheck="false" autocomplete="off"
-                 placeholder="Paste a HuggingFace repo or direct file URL…">
-          <button class="link-btn is-accent is-wide" data-action="resolve-url">[ RESOLVE ]</button>
+    <header class="hdr">
+      <div class="hdr-cell">
+        <div class="cell-label">Transferring</div>
+        <div class="cell-row">
+          <span class="cell-big" data-field="hdr-active">00</span>
+          <span class="cell-slash" data-field="hdr-total">/ 00</span>
+          <span class="cell-note">jobs in queue</span>
         </div>
+      </div>
 
-        <div class="resolve-resolving" data-field="resolve-state-resolving" hidden>
-          <span class="spinner"></span>
-          <span class="resolve-resolving-text">Contacting server…</span>
-        </div>
-
-        <div class="resolve-error" data-field="resolve-state-error" hidden>
-          <span class="bang">!!</span><span data-field="resolve-error-text"></span>
-        </div>
-
-        <div class="resolved" data-field="resolve-state-resolved" hidden>
-          <div class="resolved-head">
-            <span class="resolved-repo" data-field="resolved-repo"></span>
-            <span class="resolved-meta" data-field="resolved-meta"></span>
+      <div class="hdr-cell hdr-cell-agg">
+        <div>
+          <div class="cell-label">Aggregate</div>
+          <div class="cell-row">
+            <span class="cell-big is-accent" data-field="hdr-aggregate">0.0</span>
+            <span class="cell-unit">MB/s</span>
           </div>
+        </div>
+        <div class="spark" data-field="sparkline"></div>
+      </div>
 
-          <div class="file-picker" data-field="file-picker">
-            <div class="picker-head">
-              <span></span><span>FILE</span><span class="ta-r">SIZE</span><span class="ta-r">CHECKSUM</span>
-            </div>
-            <div id="picker-rows"></div>
+      <div class="hdr-cell">
+        <div class="cell-label">Disk free</div>
+        <div class="cell-row">
+          <span class="cell-big" data-field="hdr-disk">0.0</span>
+          <span class="cell-unit">GB</span>
+          <span class="cell-note" data-field="hdr-after-queue">→ — after queue</span>
+        </div>
+      </div>
+
+      <div class="hdr-cell hdr-cell-last">
+        <div>
+          <div class="cell-label">Recovered</div>
+          <div class="cell-row">
+            <span class="cell-big" data-field="hdr-recovered">0</span>
+            <span class="cell-note">stalls</span>
           </div>
+        </div>
+        <button class="pause-all" data-action="toggle-pause-all" data-field="pause-all">Pause all</button>
+      </div>
+    </header>
 
-          <div class="resolved-foot">
-            <div class="summary-col">
-              <div class="summary-line">
-                <span class="micro-label">SELECTED</span>
-                <span class="dotted-rule"></span>
-                <span class="summary-value" data-field="selection-summary"></span>
+    <!-- ───────────────────────────── DASHBOARD ───────────────────────────── -->
+    <section class="view is-active" data-field="view-dashboard">
+      <div class="pad">
+
+        <section class="source">
+          <div class="source-bar">
+            <div class="source-label">Source</div>
+            <input class="source-input" data-field="url-input"
+                   placeholder="huggingface.co/org/model  ·  or paste a direct file URL" />
+            <div class="source-side">
+              <div class="chip" data-action="change-destination" title="Change destination for this job">
+                <span class="chip-glyph">→</span>
+                <span data-field="source-dest">…</span>
               </div>
-              <div class="summary-line">
-                <span class="micro-label">FREE SPACE</span>
-                <span class="dotted-rule"></span>
-                <span class="summary-sub" data-field="free-space"></span>
+              <div class="chip">
+                <span class="chip-glyph">×</span>
+                <span data-field="source-conn">4 conn</span>
               </div>
-              <div class="summary-line">
-                <span class="micro-label">DESTINATION</span>
-                <span class="dotted-rule"></span>
-                <span class="summary-sub is-mut" data-field="destination-path"></span>
-                <button class="link-btn is-accent is-plain" data-action="change-destination">Change</button>
+              <button class="btn-primary" data-action="resolve-url" data-field="resolve-btn">Resolve</button>
+            </div>
+          </div>
+
+          <div class="recent-bar">
+            <span class="recent-label">Recent</span>
+            <div class="recent-chips" data-field="recents"></div>
+            <span class="recent-none" data-field="recents-empty">nothing resolved yet</span>
+          </div>
+
+          <!-- file picker: slides open under the source bar -->
+          <div class="picker" data-field="picker">
+            <div class="picker-inner">
+
+              <div class="picker-status" data-field="picker-resolving">
+                <span class="spin"></span>
+                <span>Resolving source…</span>
               </div>
-              <div class="inline-error" data-field="capacity-error" hidden><span class="bang">!!</span><span data-field="capacity-error-text"></span></div>
-              <div class="inline-error" data-field="start-error" hidden><span class="bang">!!</span><span data-field="start-error-text"></span></div>
+
+              <div class="picker-status is-error" data-field="picker-error">
+                <span class="picker-error-glyph">✗</span>
+                <span data-field="picker-error-text"></span>
+                <button class="link-btn" data-action="picker-dismiss">dismiss</button>
+              </div>
+
+              <div class="picker-body" data-field="picker-body">
+                <div class="picker-head">
+                  <div>
+                    <div class="picker-repo" data-field="picker-repo"></div>
+                    <div class="picker-meta" data-field="picker-meta"></div>
+                  </div>
+                  <div class="picker-head-actions">
+                    <button class="link-btn" data-action="picker-all">select all</button>
+                    <button class="link-btn" data-action="picker-none">select none</button>
+                    <button class="link-btn" data-action="picker-dismiss">close</button>
+                  </div>
+                </div>
+
+                <div class="picker-rows" data-field="picker-rows"></div>
+
+                <div class="picker-foot">
+                  <div class="picker-foot-facts">
+                    <span class="picker-total" data-field="picker-total">0 files — 0.0 GB</span>
+                    <span class="sep">│</span>
+                    <span data-field="picker-free">0.0 GB free</span>
+                    <span class="sep">│</span>
+                    <span class="picker-dest" data-field="picker-dest"></span>
+                  </div>
+                  <button class="btn-primary" data-action="start-download" data-field="start-btn">Start</button>
+                </div>
+
+                <div class="picker-alert" data-field="capacity-error">
+                  <span data-field="capacity-error-text"></span>
+                </div>
+                <div class="picker-alert" data-field="start-error">
+                  <span data-field="start-error-text"></span>
+                </div>
+              </div>
+
             </div>
-            <div class="grow"></div>
-            <button class="btn-primary" data-action="start-download">START DOWNLOAD</button>
           </div>
-        </div>
-      </div>
+        </section>
 
-      <div class="queue-head">
-        <span class="micro-label">JOB QUEUE</span>
-        <span class="queue-count" data-field="job-count">EMPTY</span>
-        <span class="rule"></span>
-      </div>
-
-      <div class="empty-state" data-field="empty-state" hidden>
-        <div class="empty-title">NOTHING DOWNLOADING</div>
-        <div class="empty-sub">Paste a link above — then feel free to reboot, sleep, or walk away.</div>
-      </div>
-
-      <div id="job-list"></div>
-      <div class="queue-tail"></div>
-    </section>
-
-    <!-- ─────────────────────────── JOB DETAIL ─────────────────────────── -->
-    <section class="view" id="view-detail" data-screen-label="Job detail">
-
-      <div class="detail-head">
-        <button class="link-btn is-back" data-action="back-to-dashboard">‹ BACK</button>
-
-        <div class="detail-title-row">
-          <span class="detail-name" data-field="detail-name"></span>
-          <span class="grow"></span>
-          <span class="spinner is-sm" data-field="detail-spinner" hidden></span>
-          <span class="status-dot" data-field="detail-dot"></span>
-          <span class="status-label" data-field="detail-status"></span>
-        </div>
-        <div class="detail-dest" data-field="detail-dest"></div>
-
-        <div class="detail-progress-row">
-          <div class="detail-percent" data-field="detail-percent">0.0%</div>
-          <div>
-            <div class="progress is-detail" data-field="detail-progress">
-              <div class="progress-fill"><div class="progress-stripe"></div></div>
-            </div>
-            <div class="detail-transferred" data-field="detail-transferred"></div>
+        <div class="queue-head">
+          <div class="queue-head-left">
+            <span class="section-label">Job queue</span>
+            <span class="queue-count" data-field="queue-count">0 active · 0 completed today</span>
           </div>
-        </div>
-      </div>
-
-      <div class="telemetry" data-field="detail-stats">
-        <div class="telemetry-cell">
-          <div class="telemetry-label">AUTO-RECOVERIES</div>
-          <div class="telemetry-value is-accent" data-field="stat-recoveries">0</div>
-        </div>
-        <div class="telemetry-cell">
-          <div class="telemetry-label">AVERAGE SPEED</div>
-          <div class="telemetry-value" data-field="stat-avg-speed">—</div>
-        </div>
-        <div class="telemetry-cell">
-          <div class="telemetry-label">ELAPSED</div>
-          <div class="telemetry-value" data-field="stat-elapsed">—</div>
-        </div>
-        <div class="telemetry-cell is-last">
-          <div class="telemetry-label">STARTED</div>
-          <div class="telemetry-started" data-field="stat-started">—</div>
-        </div>
-      </div>
-
-      <div class="detail-columns">
-        <div class="detail-col is-files">
-          <div class="col-head">FILES</div>
-          <div id="detail-files"></div>
-        </div>
-        <div class="detail-col">
-          <div class="col-head">EVENT LOG</div>
-          <div data-field="event-log" id="event-log"></div>
-        </div>
-      </div>
-    </section>
-
-    <!-- ──────────────────────────── SETTINGS ──────────────────────────── -->
-    <section class="view" id="view-settings" data-screen-label="Settings">
-      <div class="settings-wrap">
-        <div class="micro-label settings-title">SUPERVISOR CONFIGURATION</div>
-
-        <div class="setting-row">
-          <div>
-            <div class="setting-name">Default destination</div>
-            <div class="setting-hint">New jobs land here.</div>
-          </div>
-          <input class="setting-input" data-field="setting-destination" type="text" spellcheck="false" autocomplete="off">
-        </div>
-
-        <div class="setting-row">
-          <div>
-            <div class="setting-name">Connections per download</div>
-            <div class="setting-hint">Higher is faster until the host throttles.</div>
-          </div>
-          <input class="setting-input is-narrow" data-field="setting-connections" type="number" min="1" max="16">
-        </div>
-
-        <div class="setting-row">
-          <div>
-            <div class="setting-name">Stall sensitivity</div>
-            <div class="setting-hint">When to assume aria2c is stuck.</div>
-          </div>
-          <div class="radio-group" data-field="setting-stall">
-            <label class="radio"><input data-action="set-stall-low" type="radio" name="stall" value="Low">Low</label>
-            <label class="radio"><input data-action="set-stall-normal" type="radio" name="stall" value="Normal">Normal</label>
-            <label class="radio"><input data-action="set-stall-high" type="radio" name="stall" value="High">High</label>
+          <div class="queue-head-right">
+            <span class="text-action" data-action="clear-finished">Clear finished</span>
           </div>
         </div>
 
-        <div class="setting-row is-last">
-          <div>
-            <div class="setting-name">Start on boot</div>
-            <div class="setting-hint">Windows service that supervises jobs.</div>
+        <div class="job-list" data-field="job-list"></div>
+        <div class="empty-block" data-field="queue-empty">Queue is empty — paste a repo id or a file URL above.</div>
+
+        <div class="panels">
+          <div class="panel">
+            <div class="section-label panel-title">Connection health</div>
+            <div class="conn-list" data-field="conn-list"></div>
+            <div class="panel-empty" data-field="conn-empty">No active transfer — connection rates appear here.</div>
           </div>
-          <div class="service-row">
-            <span class="service-status" data-field="service-status"></span>
-            <span class="grow"></span>
-            <button class="link-btn" data-action="toggle-service">[Install]</button>
+          <div class="panel">
+            <div class="section-label panel-title">Activity</div>
+            <div class="feed" data-field="activity-list"></div>
+            <div class="panel-empty" data-field="activity-empty">Nothing yet.</div>
           </div>
         </div>
 
-        <div class="settings-actions">
-          <button class="btn-primary is-sm" data-action="save-settings">SAVE</button>
-          <span class="save-flash" data-field="save-flash" hidden>✓ saved — supervisor reloaded config</span>
-          <span class="inline-error is-inline" data-field="settings-error" hidden><span class="bang">!!</span><span data-field="settings-error-text"></span></span>
-        </div>
       </div>
     </section>
 
-  </div>
+    <!-- ────────────────────────────── DETAIL ─────────────────────────────── -->
+    <section class="view" data-field="view-detail">
+      <div class="pad">
+        <div class="back" data-action="back-to-dashboard">‹ Back to queue</div>
 
-  <!-- ───────────────────────── CANCEL CONFIRM ───────────────────────── -->
-  <div class="confirm-overlay" data-field="confirm-dialog" hidden>
-    <div class="confirm-box">
-      <div class="micro-label">CONFIRM</div>
-      <div class="confirm-title">Cancel this download?</div>
-      <div class="confirm-target" data-field="confirm-target"></div>
-      <div class="confirm-note" data-field="confirm-note"></div>
-      <label class="confirm-check">
-        <input type="checkbox" data-action="confirm-delete-files" checked>
-        <span>Delete partial files on disk</span>
-      </label>
-      <div class="inline-error" data-field="confirm-error" hidden><span class="bang">!!</span><span data-field="confirm-error-text"></span></div>
-      <div class="confirm-actions">
-        <button class="link-btn" data-action="confirm-cancel-dismiss">[Keep downloading]</button>
-        <button class="link-btn is-danger" data-action="confirm-cancel-job">[Cancel download]</button>
+        <div class="detail-head">
+          <div>
+            <div class="detail-name" data-field="detail-name">—</div>
+            <div class="detail-sub" data-field="detail-sub">—</div>
+          </div>
+          <div class="state-chip" data-field="detail-chip">
+            <div class="state-chip-dot" data-field="detail-chip-dot"></div>
+            <span data-field="detail-chip-label">—</span>
+          </div>
+        </div>
+
+        <div class="detail-progress">
+          <div class="detail-pct" data-field="detail-pct">0.0%</div>
+          <div class="detail-progress-right">
+            <div class="bar bar-lg" data-field="detail-bar"><div class="bar-fill"></div></div>
+            <div class="detail-facts">
+              <span data-field="detail-bytes">0.0 GB / 0.0 GB</span>
+              <span class="sep">│</span>
+              <span class="is-accent" data-field="detail-speed">—</span>
+              <span class="sep">│</span>
+              <span>ETA <span data-field="detail-eta">—</span></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="stat-grid">
+          <div class="stat">
+            <div class="cell-label">Auto-recoveries</div>
+            <div class="stat-value" data-field="stat-recoveries">0</div>
+          </div>
+          <div class="stat">
+            <div class="cell-label">Average speed</div>
+            <div class="stat-value" data-field="stat-avg">—</div>
+          </div>
+          <div class="stat">
+            <div class="cell-label">Elapsed</div>
+            <div class="stat-value" data-field="stat-elapsed">—</div>
+          </div>
+          <div class="stat">
+            <div class="cell-label">Started</div>
+            <div class="stat-value" data-field="stat-started">—</div>
+          </div>
+        </div>
+
+        <div class="detail-grid">
+          <div class="panel-flat">
+            <div class="panel-flat-head section-label">Files</div>
+            <div data-field="detail-files"></div>
+          </div>
+          <div class="panel-flat">
+            <div class="panel-flat-head section-label">Event log</div>
+            <div class="feed feed-pad" data-field="detail-log"></div>
+          </div>
+        </div>
       </div>
-    </div>
-  </div>
+    </section>
 
+    <!-- ────────────────────────────── LIBRARY ────────────────────────────── -->
+    <section class="view" data-field="view-library">
+      <div class="pad">
+        <div class="page-head">
+          <div>
+            <div class="page-title">Library</div>
+            <div class="page-sub" data-field="library-summary">Completed jobs, on disk</div>
+          </div>
+        </div>
+
+        <div class="table">
+          <div class="table-head">
+            <span>Item</span>
+            <span>Size</span>
+            <span>Integrity</span>
+            <span>Finished</span>
+            <span></span>
+          </div>
+          <div data-field="library-rows"></div>
+          <div class="panel-empty table-empty" data-field="library-empty">Nothing finished yet.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ────────────────────────────── SETTINGS ───────────────────────────── -->
+    <section class="view" data-field="view-settings">
+      <div class="pad pad-narrow">
+        <div class="page-title">Settings</div>
+        <div class="page-sub">Supervisor configuration · applies to new jobs</div>
+
+        <div class="card">
+          <div class="card-head section-label">Transfer</div>
+
+          <div class="row">
+            <div>
+              <div class="row-title">Default destination</div>
+              <div class="row-note">New jobs land here.</div>
+            </div>
+            <div class="row-ctl">
+              <input class="text-input" data-field="setting-destination" />
+              <button class="btn-ghost" data-action="browse-dest" data-field="browse-btn">Browse</button>
+            </div>
+          </div>
+
+          <div class="row">
+            <div>
+              <div class="row-title">Connections per download</div>
+              <div class="row-note">Higher is faster until the host throttles.</div>
+            </div>
+            <div class="pills" data-field="conn-pills">
+              <div class="pill" data-action="set-conn" data-value="1">1</div>
+              <div class="pill" data-action="set-conn" data-value="2">2</div>
+              <div class="pill" data-action="set-conn" data-value="4">4</div>
+              <div class="pill" data-action="set-conn" data-value="8">8</div>
+              <div class="pill" data-action="set-conn" data-value="16">16</div>
+            </div>
+          </div>
+
+          <div class="row">
+            <div>
+              <div class="row-title">Stall sensitivity</div>
+              <div class="row-note">When to assume aria2c is stuck.</div>
+            </div>
+            <div class="pills" data-field="stall-pills">
+              <div class="pill" data-action="set-stall" data-value="Low">Low</div>
+              <div class="pill" data-action="set-stall" data-value="Normal">Normal</div>
+              <div class="pill" data-action="set-stall" data-value="High">High</div>
+            </div>
+          </div>
+
+          <div class="row row-last">
+            <div>
+              <div class="row-title">Verify checksums</div>
+              <div class="row-note">Hash each file against the source manifest after transfer.</div>
+            </div>
+            <div>
+              <div class="toggle" data-action="toggle-verify" data-field="verify-toggle" role="switch" tabindex="0">
+                <div class="toggle-knob"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head section-label">Access &amp; scheduling</div>
+
+          <div class="row">
+            <div>
+              <div class="row-title">HuggingFace token</div>
+              <div class="row-note">Required for gated repos. Stored server-side, never shown again.</div>
+            </div>
+            <div class="row-ctl">
+              <input class="text-input" type="password" autocomplete="off" spellcheck="false"
+                     data-field="setting-hf-token" placeholder="hf_…" />
+              <span class="token-tag" data-field="hf-token-tag"></span>
+            </div>
+          </div>
+
+          <div class="row">
+            <div>
+              <div class="row-title">Quiet hours</div>
+              <div class="row-note">Throttle to 5 MB/s inside this window.</div>
+            </div>
+            <div class="quiet-ctl">
+              <div class="toggle" data-action="toggle-quiet" data-field="quiet-toggle" role="switch" tabindex="0">
+                <div class="toggle-knob"></div>
+              </div>
+              <input class="text-input time-input" data-field="quiet-start" data-action="set-quiet-time" value="23:00" />
+              <span class="quiet-arrow">→</span>
+              <input class="text-input time-input" data-field="quiet-end" data-action="set-quiet-time" value="07:30" />
+            </div>
+          </div>
+
+          <div class="row row-last">
+            <div>
+              <div class="row-title">Start on boot</div>
+              <div class="row-note">Background service that supervises jobs.</div>
+            </div>
+            <div class="row-ctl service-ctl">
+              <span class="service-status" data-field="service-status">Not installed</span>
+              <button class="btn-accent" data-action="toggle-service" data-field="service-btn">Install</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head section-label">Appearance</div>
+          <div class="row row-last">
+            <div>
+              <div class="row-title">Theme</div>
+              <div class="row-note">Ground tone and signal colour for the whole interface.</div>
+            </div>
+            <div>
+              <div class="swatches" data-field="theme-swatches"></div>
+              <div class="theme-name" data-field="theme-name">—</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="save-row">
+          <button class="btn-primary" data-action="save-settings">Save</button>
+          <span class="save-status" data-field="save-status">—</span>
+        </div>
+        <div class="picker-alert settings-alert" data-field="settings-error">
+          <span data-field="settings-error-text"></span>
+        </div>
+      </div>
+    </section>
+
+  </main>
 </div>
 
-<!-- ───────────────────────────── TEMPLATES ───────────────────────────── -->
-
-<template id="tpl-job-card">
-  <div class="job-card" data-field="job-card">
-    <div class="job-title-row">
-      <span class="job-index" data-field="job-index"></span>
-      <span class="job-name" data-field="job-name"></span>
-      <span class="job-subtitle" data-field="job-subtitle"></span>
-      <span class="grow"></span>
-      <span class="spinner is-sm" data-field="job-spinner" hidden></span>
-      <span class="status-dot" data-field="job-dot"></span>
-      <span class="status-label" data-field="job-status"></span>
-    </div>
-
-    <div class="job-progress-row">
-      <div class="job-percent" data-field="job-percent"></div>
-      <div class="progress is-job" data-field="job-progress">
-        <div class="progress-fill"><div class="progress-stripe"></div></div>
+<!-- ────────────────────────── CANCEL CONFIRM DIALOG ─────────────────────── -->
+<div class="modal-wrap" data-field="confirm-dialog">
+  <div class="modal">
+    <div class="modal-head section-label">Cancel job</div>
+    <div class="modal-body">
+      <div class="modal-target" data-field="confirm-target">—</div>
+      <label class="modal-check">
+        <input type="checkbox" data-action="confirm-delete-files" checked />
+        <span>Delete partial files from disk</span>
+      </label>
+      <div class="modal-note" data-field="confirm-note">—</div>
+      <div class="picker-alert" data-field="confirm-error">
+        <span data-field="confirm-error-text"></span>
       </div>
     </div>
+    <div class="modal-foot">
+      <button class="btn-ghost" data-action="confirm-dismiss">Keep job</button>
+      <button class="btn-danger" data-action="confirm-cancel-job">Cancel job</button>
+    </div>
+  </div>
+</div>
 
-    <div class="job-meta-row">
-      <div class="job-meta-left">
-        <span class="job-transferred" data-field="job-transferred"></span>
-        <span class="pipe">|</span>
-        <span class="job-mut" data-field="job-speed"></span>
-        <span class="pipe">|</span>
-        <span class="job-mut">ETA <span data-field="job-eta"></span></span>
-        <span class="dotted-rule is-flex"></span>
+<!-- ───────────────────────────────  TEMPLATES  ─────────────────────────── -->
+<template id="tpl-job-row">
+  <div class="job">
+    <div class="job-top">
+      <span class="job-idx" data-field="job-idx">01</span>
+      <span class="job-name" data-action="open-detail" data-field="job-name">—</span>
+      <span class="job-meta" data-field="job-meta">—</span>
+      <div class="grow"></div>
+      <div class="job-state">
+        <div class="job-dot" data-field="job-dot"></div>
+        <span class="job-state-label" data-field="job-state">—</span>
       </div>
+    </div>
+    <div class="job-mid">
+      <div class="job-pct" data-field="job-pct">—</div>
+      <div class="bar" data-field="job-bar"><div class="bar-fill"></div></div>
+    </div>
+    <div class="job-bot">
+      <span data-field="job-bytes">—</span>
+      <span class="sep">│</span>
+      <span data-field="job-speed">—</span>
+      <span class="sep">│</span>
+      <span>ETA <span data-field="job-eta">—</span></span>
+      <span class="sep">│</span>
+      <span class="job-recov" data-field="job-recov">—</span>
+      <div class="grow"></div>
       <div class="job-actions">
-        <span class="job-note" data-field="job-status-note" hidden></span>
-        <button class="link-btn" data-action="pause-job" hidden>[Pause]</button>
-        <button class="link-btn is-danger-hover" data-action="cancel-job">[Cancel]</button>
-        <button class="link-btn is-accent is-last" data-action="open-job-details">[Details ›]</button>
+        <button class="btn-mini" data-action="pause-job" data-field="job-pause">Pause</button>
+        <button class="btn-mini btn-mini-danger" data-action="cancel-job">Cancel</button>
+        <button class="btn-mini btn-mini-accent" data-action="open-detail">Details ›</button>
       </div>
     </div>
-
-    <div class="job-resilience" data-field="job-resilience"></div>
   </div>
 </template>
 
 <template id="tpl-picker-row">
   <label class="picker-row">
-    <input data-action="toggle-file" type="checkbox">
-    <span class="picker-name" data-field="picker-filename"></span>
-    <span class="picker-size" data-field="picker-filesize"></span>
-    <span class="picker-sha" data-field="picker-sha-tag"></span>
+    <input type="checkbox" data-action="toggle-file" />
+    <span class="picker-name" data-field="picker-name">—</span>
+    <span class="picker-size" data-field="picker-size">—</span>
+    <span class="picker-sha" data-field="picker-sha">—</span>
   </label>
 </template>
 
-<template id="tpl-file-row">
-  <div class="file-row" data-field="detail-file-row">
-    <span class="file-name" data-field="file-name"></span>
-    <span class="file-size" data-field="file-size"></span>
-    <div class="progress is-file" data-field="file-progress">
-      <div class="progress-fill"><div class="progress-stripe is-file"></div></div>
-    </div>
-    <span class="file-state" data-field="file-state"></span>
+<template id="tpl-conn-row">
+  <div class="conn">
+    <span class="conn-id" data-field="conn-id">—</span>
+    <div class="conn-track"><div class="conn-fill" data-field="conn-fill"></div></div>
+    <span class="conn-rate" data-field="conn-rate">—</span>
+    <span class="conn-host" data-field="conn-host">—</span>
   </div>
 </template>
 
-<template id="tpl-log-row">
-  <div class="log-row" data-field="log-row">
-    <span class="log-time" data-field="log-time"></span>
-    <span class="log-glyph" data-field="log-glyph"></span>
-    <span class="log-text" data-field="log-text"></span>
+<template id="tpl-feed-row">
+  <div class="feed-row">
+    <span class="feed-time" data-field="feed-time">—</span>
+    <span class="feed-dot" data-field="feed-dot"></span>
+    <span class="feed-msg" data-field="feed-msg">—</span>
   </div>
+</template>
+
+<template id="tpl-file-row">
+  <div class="file-row">
+    <span class="file-name" data-field="file-name">—</span>
+    <span class="file-size" data-field="file-size">—</span>
+    <div class="file-track"><div class="file-fill" data-field="file-fill"></div></div>
+    <span class="file-state" data-field="file-state">—</span>
+  </div>
+</template>
+
+<template id="tpl-library-row">
+  <div class="table-row">
+    <div>
+      <div class="lib-name" data-field="lib-name">—</div>
+      <div class="lib-path" data-field="lib-path">—</div>
+    </div>
+    <span class="lib-size" data-field="lib-size">—</span>
+    <span class="lib-check" data-field="lib-check">—</span>
+    <span class="lib-when" data-field="lib-when">—</span>
+    <div class="lib-actions">
+      <button class="btn-mini" data-action="open-folder">Open</button>
+      <button class="btn-mini" data-action="reverify">Re-verify</button>
+    </div>
+  </div>
+</template>
+
+<template id="tpl-recent-chip">
+  <div class="recent-chip" data-action="use-recent">—</div>
+</template>
+
+<template id="tpl-swatch">
+  <div class="swatch" data-action="set-theme"><div class="swatch-dot"></div></div>
 </template>
 
 <!-- mock loader: ?mock=1 pulls in mock-data.js before app.js boots -->
