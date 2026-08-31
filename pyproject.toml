@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "bitrebuttal"
-version = "1.0.0"
+version = "1.0.1"
 description = "Bit Rebuttal - resilient aria2c supervisor for huge unattended downloads"
 readme = "README.md"
 requires-python = ">=3.10"
