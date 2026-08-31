@@ -115,7 +115,11 @@ def new_secret() -> str:
 
 def file_allocation() -> str:
     # falloc needs privileges on NTFS -> prealloc on Windows (ARCHITECTURE 3).
-    return "prealloc" if sys.platform == "win32" else "falloc"
+    if sys.platform == "win32":
+        return "prealloc"
+    if sys.platform == "darwin":
+        return "none"  # no posix_fallocate on APFS; sparse writes are fine
+    return "falloc"
 
 
 _ipv6_cache: Optional[bool] = None

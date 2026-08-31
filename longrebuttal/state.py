@@ -26,13 +26,15 @@ STATE_VERSION = 1
 
 
 def data_dir() -> Path:
-    """%LOCALAPPDATA%\\longrebuttal on Windows, ~/.local/share/longrebuttal elsewhere."""
+    """%LOCALAPPDATA%\\longrebuttal (Windows), ~/Library/Application Support (macOS), ~/.local/share (Linux)."""
     override = os.environ.get("LONGREBUTTAL_DATA_DIR")
     if override:
         return Path(override)
     if sys.platform == "win32":
         base = os.environ.get("LOCALAPPDATA") or (Path.home() / "AppData" / "Local")
         return Path(base) / APP_NAME
+    if sys.platform == "darwin":
+        return Path.home() / "Library" / "Application Support" / APP_NAME
     return Path.home() / ".local" / "share" / APP_NAME
 
 

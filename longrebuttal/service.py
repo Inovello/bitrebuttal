@@ -1,4 +1,4 @@
-"""Reboot survival: user systemd unit (Linux) / Task Scheduler ONLOGON task (Windows).
+"""Reboot survival: user systemd unit (Linux) / Task Scheduler ONLOGON task (Windows) / launchd LaunchAgent (macOS).
 
 Every function returns a dict; when a step needs elevation or a manual action we
 return the exact command for the user to run instead of failing silently.
@@ -7,6 +7,7 @@ return the exact command for the user to run instead of failing silently.
 from __future__ import annotations
 
 import os
+import plistlib
 import shutil
 import subprocess
 import sys
@@ -15,6 +16,7 @@ from typing import Any, Dict, List, Optional
 
 TASK_NAME = "LongRebuttal"
 UNIT_NAME = "longrebuttal.service"
+LAUNCHD_LABEL = "com.longrebuttal.serve"
 DEFAULT_PORT = 7451
 
 UNIT_TEMPLATE = """\
@@ -176,16 +178,102 @@ def _linux_status() -> Dict[str, Any]:
     return {"installed": enabled == "enabled", "detail": f"{enabled}, {active or 'inactive'}"}
 
 
+# ---------------------------------------------------------------- macOS
+
+
+def _plist_path() -> Path:
+    return Path.home() / "Library" / "LaunchAgents" / f"{LAUNCHD_LABEL}.plist"
+
+
+def _launchctl() -> Optional[str]:
+    return shutil.which("launchctl")
+
+
+def _launchd_plist(cmd: List[str]) -> str:
+    """The LaunchAgent XML, built with plistlib (pure - no filesystem access)."""
+    log = str(Path.home() / "Library" / "Logs" / "longrebuttal.log")
+    pl = {
+        "Label": LAUNCHD_LABEL,
+        "ProgramArguments": cmd,
+        "RunAtLoad": True,
+        "KeepAlive": {"SuccessfulExit": False},  # relaunch on failure (Restart=on-failure)
+        "StandardOutPath": log,
+        "StandardErrorPath": log,
+    }
+    return plistlib.dumps(pl, fmt=plistlib.FMT_XML).decode()
+
+
+def _mac_install(port: int) -> Dict[str, Any]:
+    path = _plist_path()
+    manual = f"launchctl load -w {path}"
+    lc = _launchctl()
+    if not lc:
+        return {"installed": False, "error": "launchctl not found on PATH.", "command": manual}
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(_launchd_plist(_launch_cmd(port)), encoding="utf-8")
+    except OSError as exc:
+        return {"installed": False, "error": f"Could not write {path}: {exc}", "command": manual}
+    _run([lc, "unload", "-w", str(path)])  # clear a stale load; ignore failure
+    res = _run([lc, "load", "-w", str(path)])
+    if res.returncode != 0:
+        return {"installed": False,
+                "error": (res.stderr or res.stdout or "launchctl load failed").strip(),
+                "command": manual}
+    return {"installed": True,
+            "message": f"Wrote {path} and loaded {LAUNCHD_LABEL} (runs at login).",
+            "command": manual}
+
+
+def _mac_uninstall() -> Dict[str, Any]:
+    path = _plist_path()
+    lc = _launchctl()
+    if lc:
+        _run([lc, "unload", "-w", str(path)])  # ignore failure
+    try:
+        path.unlink()
+    except OSError:
+        pass
+    return {"installed": False, "message": f"Removed {path} and unloaded {LAUNCHD_LABEL}."}
+
+
+def _mac_status() -> Dict[str, Any]:
+    path = _plist_path()
+    if not path.exists():
+        return {"installed": False, "detail": f"LaunchAgent {LAUNCHD_LABEL} absent."}
+    lc = _launchctl()
+    if not lc:
+        return {"installed": False,
+                "detail": "launchctl not found; plist present but load state unknown."}
+    res = _run([lc, "list"])
+    if LAUNCHD_LABEL in (res.stdout or ""):
+        return {"installed": True, "detail": f"LaunchAgent {LAUNCHD_LABEL} loaded."}
+    return {"installed": False,
+            "detail": f"Plist present but {LAUNCHD_LABEL} is not loaded."}
+
+
 # ---------------------------------------------------------------- dispatch
 
 
 def install(port: int = DEFAULT_PORT) -> Dict[str, Any]:
-    return _win_install(port) if sys.platform == "win32" else _linux_install(port)
+    if sys.platform == "win32":
+        return _win_install(port)
+    if sys.platform == "darwin":
+        return _mac_install(port)
+    return _linux_install(port)
 
 
 def uninstall() -> Dict[str, Any]:
-    return _win_uninstall() if sys.platform == "win32" else _linux_uninstall()
+    if sys.platform == "win32":
+        return _win_uninstall()
+    if sys.platform == "darwin":
+        return _mac_uninstall()
+    return _linux_uninstall()
 
 
 def status() -> Dict[str, Any]:
-    return _win_status() if sys.platform == "win32" else _linux_status()
+    if sys.platform == "win32":
+        return _win_status()
+    if sys.platform == "darwin":
+        return _mac_status()
+    return _linux_status()

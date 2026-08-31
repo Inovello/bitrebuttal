@@ -180,6 +180,7 @@ class Engine:
         exe = shutil.which(self.aria2_path)
         if not exe:
             hint = ("winget install aria2.aria2" if sys.platform == "win32"
+                    else "brew install aria2" if sys.platform == "darwin"
                     else "sudo apt install aria2")
             raise EngineError(f"aria2c not found on PATH. Install it: {hint}")
         return exe
