@@ -28,11 +28,22 @@ def _create_window(port: int):
                                    width=1440, height=920, min_size=(1200, 760))
     if sys.platform == "win32":
         # Dark title bar (DWMWA_USE_IMMERSIVE_DARK_MODE); without it Windows
-        # paints the default light-grey chrome over the dark UI.
+        # paints the default light-grey chrome over the dark UI. Setting the
+        # attribute on an already-visible window does not repaint the caption,
+        # so force a frame change afterwards (SWP_FRAMECHANGED).
         def _darken(*_args) -> None:
             try:
                 import ctypes
-                hwnd = ctypes.windll.user32.FindWindowW(None, WINDOW_TITLE)
+                hwnd = 0
+                native = getattr(window, "native", None)
+                handle = getattr(native, "Handle", None)
+                if handle is not None:
+                    try:
+                        hwnd = int(handle.ToInt64())
+                    except Exception:
+                        hwnd = 0
+                if not hwnd:
+                    hwnd = ctypes.windll.user32.FindWindowW(None, WINDOW_TITLE)
                 if not hwnd:
                     return
                 value = ctypes.c_int(1)
@@ -41,9 +52,12 @@ def _create_window(port: int):
                             hwnd, attr, ctypes.byref(value),
                             ctypes.sizeof(value)) == 0:
                         break
+                # NOSIZE | NOMOVE | NOZORDER | NOACTIVATE | FRAMECHANGED
+                ctypes.windll.user32.SetWindowPos(hwnd, 0, 0, 0, 0, 0, 0x0037)
             except Exception:                # cosmetic only - never fatal
                 pass
         window.events.shown += _darken
+        threading.Timer(1.5, _darken).start()  # belt and braces after WebView2 attaches
     return window
 
 
