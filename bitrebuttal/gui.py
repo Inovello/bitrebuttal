@@ -75,16 +75,45 @@ def run(port: int = 7451) -> int:
     from .engine import Engine
     from .server import create_app
 
-    # Single-instance guard: if a Bit Rebuttal server already answers on this
-    # port, attach a window to it instead of starting a second engine — two
-    # engines sharing one state file clobber each other's job records.
-    try:
-        probe = httpx.get(f"http://127.0.0.1:{port}/api/status",
+    # Single-instance guard: if a Bit Rebuttal server already OWNS this port,
+    # attach a window to it instead of starting a second engine — two engines
+    # sharing one state file clobber each other's job records.
+    #
+    # The test is socket-first, not HTTP-first: a dying instance keeps
+    # answering HTTP for a moment after its window closes, and attaching to it
+    # leaves a window onto nothing (observed twice on rapid close+relaunch).
+    # Port bindable -> no listener -> run our own engine. Port busy -> probe;
+    # busy but not answering -> the old instance is draining, wait for it.
+    import socket
+
+    def port_is_free() -> bool:
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        try:
+            s.bind(("127.0.0.1", port))
+            return True
+        except OSError:
+            return False
+        finally:
+            s.close()
+
+    def probe_ok() -> bool:
+        try:
+            r = httpx.get(f"http://127.0.0.1:{port}/api/status",
                           timeout=1.5, trust_env=False)
-        already_running = probe.status_code == 200 and "backend" in probe.json()
-    except Exception:
-        already_running = False
-    if already_running:
+            return r.status_code == 200 and "backend" in r.json()
+        except Exception:
+            return False
+
+    attach = False
+    deadline = time.monotonic() + 12.0
+    while time.monotonic() < deadline:
+        if port_is_free():
+            break                     # no listener: we own the port
+        if probe_ok():
+            attach = True             # live instance: attach a window to it
+            break
+        time.sleep(0.4)               # busy but silent: old instance draining
+    if attach:
         _create_window(port)
         webview.start()               # window onto the existing instance
         return 0
