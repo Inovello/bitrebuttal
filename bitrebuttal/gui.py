@@ -7,7 +7,6 @@ behaviour - ``engine.stop()`` flushes the aria2 control files).
 
 from __future__ import annotations
 
-import sys
 import threading
 import time
 from typing import Optional
@@ -23,41 +22,45 @@ FALLBACK_MSG = ("native shell needs pywebview + a webview runtime; "
 WINDOW_TITLE = "Bit Rebuttal"
 
 
+class _WindowApi:
+    """JS bridge for the frameless window's in-UI title strip.
+
+    The page shows its own minimize/maximize/close buttons (``.shellbar`` in
+    the static UI) and calls these via ``window.pywebview.api``.
+    """
+
+    def __init__(self) -> None:
+        self.window = None
+        self._maximized = False
+
+    def minimize(self) -> None:
+        if self.window is not None:
+            self.window.minimize()
+
+    def toggle_maximize(self) -> None:
+        if self.window is None:
+            return
+        if self._maximized:
+            self.window.restore()
+        elif hasattr(self.window, "maximize"):
+            self.window.maximize()
+        else:                                 # very old pywebview fallback
+            self.window.toggle_fullscreen()
+        self._maximized = not self._maximized
+
+    def close(self) -> None:
+        if self.window is not None:
+            self.window.destroy()
+
+
 def _create_window(port: int):
+    # Frameless: the OS title bar never matched the dark UI; the page renders
+    # its own slim window strip (drag region + window buttons) instead.
+    api = _WindowApi()
     window = webview.create_window(WINDOW_TITLE, f"http://127.0.0.1:{port}",
-                                   width=1440, height=920, min_size=(1200, 760))
-    if sys.platform == "win32":
-        # Dark title bar (DWMWA_USE_IMMERSIVE_DARK_MODE); without it Windows
-        # paints the default light-grey chrome over the dark UI. Setting the
-        # attribute on an already-visible window does not repaint the caption,
-        # so force a frame change afterwards (SWP_FRAMECHANGED).
-        def _darken(*_args) -> None:
-            try:
-                import ctypes
-                hwnd = 0
-                native = getattr(window, "native", None)
-                handle = getattr(native, "Handle", None)
-                if handle is not None:
-                    try:
-                        hwnd = int(handle.ToInt64())
-                    except Exception:
-                        hwnd = 0
-                if not hwnd:
-                    hwnd = ctypes.windll.user32.FindWindowW(None, WINDOW_TITLE)
-                if not hwnd:
-                    return
-                value = ctypes.c_int(1)
-                for attr in (20, 19):        # 19 on pre-20H1 builds
-                    if ctypes.windll.dwmapi.DwmSetWindowAttribute(
-                            hwnd, attr, ctypes.byref(value),
-                            ctypes.sizeof(value)) == 0:
-                        break
-                # NOSIZE | NOMOVE | NOZORDER | NOACTIVATE | FRAMECHANGED
-                ctypes.windll.user32.SetWindowPos(hwnd, 0, 0, 0, 0, 0, 0x0037)
-            except Exception:                # cosmetic only - never fatal
-                pass
-        window.events.shown += _darken
-        threading.Timer(1.5, _darken).start()  # belt and braces after WebView2 attaches
+                                   width=1440, height=920, min_size=(1200, 760),
+                                   frameless=True, easy_drag=False, js_api=api)
+    api.window = window
     return window
 
 

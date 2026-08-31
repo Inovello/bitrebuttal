@@ -11,6 +11,19 @@
 </head>
 <body>
 
+<!-- native-shell window strip: hidden in the browser, shown by app.js when
+     running inside the frameless pywebview window -->
+<div class="shellbar" data-field="shellbar" hidden>
+  <div class="shellbar-drag pywebview-drag-region">
+    <span class="shellbar-title">BIT REBUTTAL</span>
+  </div>
+  <div class="shellbar-btns">
+    <button class="shellbar-btn" data-action="win-min" title="Minimize">─</button>
+    <button class="shellbar-btn" data-action="win-max" title="Maximize">▢</button>
+    <button class="shellbar-btn is-close" data-action="win-close" title="Close">✕</button>
+  </div>
+</div>
+
 <div class="app">
 
   <!-- ══════════════════════════════ SIDEBAR ══════════════════════════════ -->

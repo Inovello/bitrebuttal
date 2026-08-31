@@ -1444,3 +1444,26 @@
   // handy for debugging from the console
   window.BR = { state: state, api: api, render: render, poll: poll, THEMES: THEMES };
 })();
+
+// ── native shell window controls (frameless pywebview) ─────────────────────
+(function () {
+  var bar = document.querySelector('[data-field="shellbar"]');
+  if (!bar) return;
+  function show() {
+    bar.hidden = false;
+    document.body.classList.add('shell');
+  }
+  window.addEventListener('pywebviewready', show);
+  if (window.pywebview) show();
+  bar.addEventListener('click', function (e) {
+    var btn = e.target.closest('[data-action]');
+    if (!btn || !window.pywebview) return;
+    var a = btn.getAttribute('data-action');
+    if (a === 'win-min') window.pywebview.api.minimize();
+    else if (a === 'win-max') window.pywebview.api.toggle_maximize();
+    else if (a === 'win-close') window.pywebview.api.close();
+  });
+  bar.querySelector('.shellbar-drag').addEventListener('dblclick', function () {
+    if (window.pywebview) window.pywebview.api.toggle_maximize();
+  });
+})();

@@ -763,3 +763,29 @@ button { font-family: var(--sans); }
   padding: 16px 22px;
   border-top: 1px solid var(--line-3);
 }
+
+/* ── native shell window strip (frameless pywebview mode) ───────────────── */
+.shellbar {
+  position: sticky; top: 0; z-index: 60;
+  display: flex; align-items: stretch;
+  height: 34px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--line);
+  user-select: none;
+}
+.shellbar[hidden] { display: none; }
+.shellbar-drag { flex: 1; display: flex; align-items: center; padding: 0 16px; }
+.shellbar-title {
+  font-family: var(--mono); font-size: 10px; letter-spacing: 0.16em;
+  color: oklch(0.52 var(--nc) var(--nh));
+}
+.shellbar-btns { display: flex; }
+.shellbar-btn {
+  width: 46px; border: none; background: transparent; cursor: pointer;
+  font-family: var(--mono); font-size: 12px; line-height: 1;
+  color: oklch(0.62 var(--nc) var(--nh));
+}
+.shellbar-btn:hover { background: oklch(0.25 var(--nc) var(--nh)); color: oklch(0.94 var(--nc) var(--nh)); }
+.shellbar-btn.is-close:hover { background: oklch(0.55 0.19 25); color: oklch(0.98 0.01 25); }
+body.shell .app { min-height: calc(100vh - 34px); }
+body.shell .sidebar { height: calc(100vh - 34px); top: 34px; }
