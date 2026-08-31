@@ -193,9 +193,13 @@ def quiet_hours_active(settings: Dict[str, Any], now: Optional[float] = None) ->
 
 
 def effective_limit_mbs(settings: Dict[str, Any], now: Optional[float] = None) -> int:
-    """MB/s cap to apply right now: 5 inside quiet hours, else the configured cap (0 = off)."""
+    """MB/s cap to apply right now: the quiet-hours limitMBs inside the window, else the configured cap (0 = off)."""
     if quiet_hours_active(settings, now):
-        return QUIET_HOURS_LIMIT_MBS
+        q = settings.get("quietHours") or {}
+        try:
+            return max(1, min(50, int(q.get("limitMBs", QUIET_HOURS_LIMIT_MBS))))
+        except (TypeError, ValueError):
+            return QUIET_HOURS_LIMIT_MBS
     try:
         return max(0, int(settings.get("bandwidthCapMBs", 0) or 0))
     except (TypeError, ValueError):
@@ -356,7 +360,8 @@ class Engine:
         self.save()
 
     def add_job(self, url: str, files: Optional[List[str]] = None,
-                dest: Optional[str] = None) -> Dict[str, Any]:
+                dest: Optional[str] = None,
+                connections: Optional[int] = None) -> Dict[str, Any]:
         manifest: Manifest = resolve(url)          # never trust client-provided sizes
         self._push_recent(url)
         selected = list(manifest.files)
@@ -387,6 +392,12 @@ class Engine:
         except OSError as exc:
             raise EngineError(f"Cannot create destination {base}: {exc}") from exc
 
+        conn = 0                                   # 0 = "use the settings default"
+        if connections is not None:
+            try:
+                conn = max(1, min(16, int(connections)))
+            except (TypeError, ValueError):
+                conn = 0
         job = Job(
             id=new_job_id(),
             name=manifest.name,
@@ -398,6 +409,7 @@ class Engine:
             repo=manifest.repo,
             revision=manifest.revision,
             status="DOWNLOADING",
+            connections=conn,
         )
         with self.lock:
             self.jobs[job.id] = job
@@ -513,6 +525,21 @@ class Engine:
                         os.unlink(p)
                     except OSError:
                         pass
+        self.save()
+        return {"ok": True}
+
+    def set_connections(self, job_id: str, value: Any) -> Dict[str, Any]:
+        """Per-job aria2 split/max-connection-per-server. Applies from the next aria2c launch."""
+        with self.lock:
+            job = self._job(job_id)
+            try:
+                n = int(value)
+            except (TypeError, ValueError):
+                raise EngineError("connections must be an integer.")
+            n = max(1, min(16, n))
+            job.connections = n
+            self.event(job, "info",
+                       f"Connections set to {n} - applies from the next aria2c launch")
         self.save()
         return {"ok": True}
 
@@ -688,7 +715,12 @@ class Engine:
         s = dict(self.settings)
         token = s.pop("hfToken", "")           # WRITE-ONLY: never echoed, anywhere
         s["hfTokenSet"] = bool(str(token or "").strip())
-        s["quietHours"] = dict(s.get("quietHours") or {})
+        q = dict(s.get("quietHours") or {})
+        try:
+            q["limitMBs"] = max(1, min(50, int(q.get("limitMBs", QUIET_HOURS_LIMIT_MBS))))
+        except (TypeError, ValueError):
+            q["limitMBs"] = QUIET_HOURS_LIMIT_MBS
+        s["quietHours"] = q
         s["serviceInstalled"] = self._service_installed()
         return s
 
@@ -810,9 +842,21 @@ class Engine:
             "elapsedLabel": elapsed_label(end - job.created_at),
             "avgSpeedBps": avg,
             "archived": bool(job.archived),
+            "connections": self._effective_connections(job),
             "files": [self._file_payload(f) for f in job.files],
             "log": list(job.log),
         }
+
+    def _effective_connections(self, job: Job) -> int:
+        """The job's operative split/max-connection-per-server value (1..16).
+
+        ``job.connections == 0`` means "use the settings default".
+        """
+        try:
+            value = job.connections or int(self.settings.get("connections", 4))
+        except (TypeError, ValueError):
+            value = 4
+        return max(1, min(16, int(value)))
 
     @staticmethod
     def _file_payload(f: FileEntry) -> Dict[str, Any]:
@@ -1032,7 +1076,9 @@ class Engine:
             if (job.id, f.name) in self._keys:
                 continue
             out = f.name.replace("\\", "/")
-            options = {"dir": job.dest, "out": out}
+            conn = str(self._effective_connections(job))
+            options = {"dir": job.dest, "out": out,
+                       "split": conn, "max-connection-per-server": conn}
             try:
                 gid = self._proc.rpc.add_uri([f.url], options)
             except Aria2Error as exc:

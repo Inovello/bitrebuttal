@@ -158,6 +158,7 @@ class Job:
     status: str = "DOWNLOADING"
     recoveries: int = 0
     bytes_lost: int = 0
+    connections: int = 0           # per-job aria2 split/max-connection-per-server (0 = settings default)
     paused: bool = False
     archived: bool = False         # cleared off the dashboard; still in the Library
     error: Optional[str] = None
@@ -201,7 +202,10 @@ def new_job_id() -> str:
 
 # ---------------------------------------------------------------- settings
 
-DEFAULT_QUIET_HOURS: Dict[str, Any] = {"enabled": False, "start": "23:00", "end": "07:30"}
+QUIET_HOURS_LIMIT_MBS = 5                      # default in-window throttle, clamped 1..50
+
+DEFAULT_QUIET_HOURS: Dict[str, Any] = {"enabled": False, "start": "23:00", "end": "07:30",
+                                       "limitMBs": QUIET_HOURS_LIMIT_MBS}
 
 DEFAULT_SETTINGS: Dict[str, Any] = {
     "destination": str(default_destination()),
@@ -217,7 +221,6 @@ DEFAULT_SETTINGS: Dict[str, Any] = {
 STALL_SENSITIVITIES = ("Low", "Normal", "High")
 THEMES = ("mauve", "graphite", "ink", "slate")
 BANDWIDTH_CAP_RANGE = (10, 120)
-QUIET_HOURS_LIMIT_MBS = 5
 
 HHMM_RE = re.compile(r"^\s*(\d{1,2}):(\d{2})\s*$")
 
@@ -235,11 +238,18 @@ def normalize_hhmm(raw: Any, default: str) -> str:
 
 def normalize_quiet_hours(raw: Any) -> Dict[str, Any]:
     d = raw if isinstance(raw, dict) else {}
-    return {
+    out = {
         "enabled": bool(d.get("enabled", DEFAULT_QUIET_HOURS["enabled"])),
         "start": normalize_hhmm(d.get("start"), DEFAULT_QUIET_HOURS["start"]),
         "end": normalize_hhmm(d.get("end"), DEFAULT_QUIET_HOURS["end"]),
     }
+    if "limitMBs" in d:
+        try:
+            limit = int(d["limitMBs"])
+        except (TypeError, ValueError):
+            limit = QUIET_HOURS_LIMIT_MBS
+        out["limitMBs"] = max(1, min(50, limit))
+    return out
 
 
 def normalize_settings(raw: Optional[Dict[str, Any]]) -> Dict[str, Any]:

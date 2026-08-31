@@ -39,6 +39,11 @@ class JobBody(BaseModel):
     url: str
     files: Optional[List[str]] = None
     dest: Optional[str] = None
+    connections: Optional[int] = None
+
+
+class ConnectionsBody(BaseModel):
+    connections: Optional[int] = None
 
 
 def _error(status_code: int, message: str) -> JSONResponse:
@@ -100,7 +105,7 @@ def create_app(engine: Engine,
 
     @app.post("/api/jobs", status_code=201)
     async def api_add_job(body: JobBody) -> Dict[str, Any]:
-        return engine.add_job(body.url, body.files, body.dest)
+        return engine.add_job(body.url, body.files, body.dest, body.connections)
 
     # Literal /api/jobs/<verb> routes are registered before the /{job_id}/ ones so a
     # job can never be named "pause-all".
@@ -131,6 +136,10 @@ def create_app(engine: Engine,
     @app.post("/api/jobs/{job_id}/repair")
     async def api_repair(job_id: str) -> Dict[str, Any]:
         return engine.repair_job(job_id)
+
+    @app.post("/api/jobs/{job_id}/connections")
+    async def api_set_connections(job_id: str, body: ConnectionsBody) -> Dict[str, Any]:
+        return engine.set_connections(job_id, body.connections)
 
     @app.post("/api/jobs/{job_id}/open-folder")
     async def api_open_folder(job_id: str) -> Dict[str, Any]:
