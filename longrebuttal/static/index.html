@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1280">
+<title>Long Rebuttal</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div class="lr-app">
+
+  <!-- ────────────────────────────── SIDEBAR ────────────────────────────── -->
+  <aside class="sidebar">
+    <div class="sidebar-head">
+      <div class="app-name" data-field="app-name">LONG&nbsp;REBUTTAL</div>
+      <div class="app-tagline" data-field="app-tagline">Downloads that finish.</div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <button class="nav-btn is-active" data-action="nav-dashboard">DASHBOARD</button>
+      <button class="nav-btn" data-action="nav-settings">SETTINGS</button>
+    </nav>
+
+    <div class="sidebar-spacer"></div>
+
+    <div class="sidebar-foot">
+      <div class="heartbeat" data-field="heartbeat"></div>
+      <div class="backend-status" data-field="backend-status">
+        <span class="backend-dot" data-field="backend-dot"></span>
+        <span data-field="backend-status-text">Supervisor is watching</span>
+      </div>
+      <div class="backend-sub">Heartbeat <span data-field="beat-age">0s ago</span> · v<span data-field="backend-version">—</span></div>
+      <div class="service-badge" data-field="service-badge">Not installed</div>
+    </div>
+  </aside>
+
+  <!-- ─────────────────────────────── MAIN ──────────────────────────────── -->
+  <div class="main">
+
+    <div class="telemetry">
+      <div class="telemetry-cell">
+        <div class="telemetry-label">TRANSFERRING</div>
+        <div class="telemetry-value" data-field="telemetry-active">00 / 00</div>
+      </div>
+      <div class="telemetry-cell">
+        <div class="telemetry-label">AGGREGATE</div>
+        <div class="telemetry-value is-accent" data-field="telemetry-aggregate">—</div>
+      </div>
+      <div class="telemetry-cell">
+        <div class="telemetry-label">DISK FREE</div>
+        <div class="telemetry-value" data-field="telemetry-disk">0.0 GB</div>
+      </div>
+      <div class="telemetry-cell is-last">
+        <div class="telemetry-label">AUTO-RECOVERIES</div>
+        <div class="telemetry-value" data-field="telemetry-recoveries">0</div>
+      </div>
+    </div>
+
+    <!-- ───────────────────────── DASHBOARD ───────────────────────── -->
+    <section class="view is-active" id="view-dashboard" data-screen-label="Dashboard">
+
+      <div class="add-panel" data-field="add-panel">
+        <div class="add-row">
+          <span class="micro-label">SOURCE</span>
+          <span class="prompt-caret">&gt;</span>
+          <input class="url-input" data-field="url-input" type="text" spellcheck="false" autocomplete="off"
+                 placeholder="Paste a HuggingFace repo or direct file URL…">
+          <button class="link-btn is-accent is-wide" data-action="resolve-url">[ RESOLVE ]</button>
+        </div>
+
+        <div class="resolve-resolving" data-field="resolve-state-resolving" hidden>
+          <span class="spinner"></span>
+          <span class="resolve-resolving-text">Contacting server…</span>
+        </div>
+
+        <div class="resolve-error" data-field="resolve-state-error" hidden>
+          <span class="bang">!!</span><span data-field="resolve-error-text"></span>
+        </div>
+
+        <div class="resolved" data-field="resolve-state-resolved" hidden>
+          <div class="resolved-head">
+            <span class="resolved-repo" data-field="resolved-repo"></span>
+            <span class="resolved-meta" data-field="resolved-meta"></span>
+          </div>
+
+          <div class="file-picker" data-field="file-picker">
+            <div class="picker-head">
+              <span></span><span>FILE</span><span class="ta-r">SIZE</span><span class="ta-r">CHECKSUM</span>
+            </div>
+            <div id="picker-rows"></div>
+          </div>
+
+          <div class="resolved-foot">
+            <div class="summary-col">
+              <div class="summary-line">
+                <span class="micro-label">SELECTED</span>
+                <span class="dotted-rule"></span>
+                <span class="summary-value" data-field="selection-summary"></span>
+              </div>
+              <div class="summary-line">
+                <span class="micro-label">FREE SPACE</span>
+                <span class="dotted-rule"></span>
+                <span class="summary-sub" data-field="free-space"></span>
+              </div>
+              <div class="summary-line">
+                <span class="micro-label">DESTINATION</span>
+                <span class="dotted-rule"></span>
+                <span class="summary-sub is-mut" data-field="destination-path"></span>
+                <button class="link-btn is-accent is-plain" data-action="change-destination">Change</button>
+              </div>
+              <div class="inline-error" data-field="capacity-error" hidden><span class="bang">!!</span><span data-field="capacity-error-text"></span></div>
+              <div class="inline-error" data-field="start-error" hidden><span class="bang">!!</span><span data-field="start-error-text"></span></div>
+            </div>
+            <div class="grow"></div>
+            <button class="btn-primary" data-action="start-download">START DOWNLOAD</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="queue-head">
+        <span class="micro-label">JOB QUEUE</span>
+        <span class="queue-count" data-field="job-count">EMPTY</span>
+        <span class="rule"></span>
+      </div>
+
+      <div class="empty-state" data-field="empty-state" hidden>
+        <div class="empty-title">NOTHING DOWNLOADING</div>
+        <div class="empty-sub">Paste a link above — then feel free to reboot, sleep, or walk away.</div>
+      </div>
+
+      <div id="job-list"></div>
+      <div class="queue-tail"></div>
+    </section>
+
+    <!-- ─────────────────────────── JOB DETAIL ─────────────────────────── -->
+    <section class="view" id="view-detail" data-screen-label="Job detail">
+
+      <div class="detail-head">
+        <button class="link-btn is-back" data-action="back-to-dashboard">‹ BACK</button>
+
+        <div class="detail-title-row">
+          <span class="detail-name" data-field="detail-name"></span>
+          <span class="grow"></span>
+          <span class="spinner is-sm" data-field="detail-spinner" hidden></span>
+          <span class="status-dot" data-field="detail-dot"></span>
+          <span class="status-label" data-field="detail-status"></span>
+        </div>
+        <div class="detail-dest" data-field="detail-dest"></div>
+
+        <div class="detail-progress-row">
+          <div class="detail-percent" data-field="detail-percent">0.0%</div>
+          <div>
+            <div class="progress is-detail" data-field="detail-progress">
+              <div class="progress-fill"><div class="progress-stripe"></div></div>
+            </div>
+            <div class="detail-transferred" data-field="detail-transferred"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="telemetry" data-field="detail-stats">
+        <div class="telemetry-cell">
+          <div class="telemetry-label">AUTO-RECOVERIES</div>
+          <div class="telemetry-value is-accent" data-field="stat-recoveries">0</div>
+        </div>
+        <div class="telemetry-cell">
+          <div class="telemetry-label">AVERAGE SPEED</div>
+          <div class="telemetry-value" data-field="stat-avg-speed">—</div>
+        </div>
+        <div class="telemetry-cell">
+          <div class="telemetry-label">ELAPSED</div>
+          <div class="telemetry-value" data-field="stat-elapsed">—</div>
+        </div>
+        <div class="telemetry-cell is-last">
+          <div class="telemetry-label">STARTED</div>
+          <div class="telemetry-started" data-field="stat-started">—</div>
+        </div>
+      </div>
+
+      <div class="detail-columns">
+        <div class="detail-col is-files">
+          <div class="col-head">FILES</div>
+          <div id="detail-files"></div>
+        </div>
+        <div class="detail-col">
+          <div class="col-head">EVENT LOG</div>
+          <div data-field="event-log" id="event-log"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ──────────────────────────── SETTINGS ──────────────────────────── -->
+    <section class="view" id="view-settings" data-screen-label="Settings">
+      <div class="settings-wrap">
+        <div class="micro-label settings-title">SUPERVISOR CONFIGURATION</div>
+
+        <div class="setting-row">
+          <div>
+            <div class="setting-name">Default destination</div>
+            <div class="setting-hint">New jobs land here.</div>
+          </div>
+          <input class="setting-input" data-field="setting-destination" type="text" spellcheck="false" autocomplete="off">
+        </div>
+
+        <div class="setting-row">
+          <div>
+            <div class="setting-name">Connections per download</div>
+            <div class="setting-hint">Higher is faster until the host throttles.</div>
+          </div>
+          <input class="setting-input is-narrow" data-field="setting-connections" type="number" min="1" max="16">
+        </div>
+
+        <div class="setting-row">
+          <div>
+            <div class="setting-name">Stall sensitivity</div>
+            <div class="setting-hint">When to assume aria2c is stuck.</div>
+          </div>
+          <div class="radio-group" data-field="setting-stall">
+            <label class="radio"><input data-action="set-stall-low" type="radio" name="stall" value="Low">Low</label>
+            <label class="radio"><input data-action="set-stall-normal" type="radio" name="stall" value="Normal">Normal</label>
+            <label class="radio"><input data-action="set-stall-high" type="radio" name="stall" value="High">High</label>
+          </div>
+        </div>
+
+        <div class="setting-row is-last">
+          <div>
+            <div class="setting-name">Start on boot</div>
+            <div class="setting-hint">Windows service that supervises jobs.</div>
+          </div>
+          <div class="service-row">
+            <span class="service-status" data-field="service-status"></span>
+            <span class="grow"></span>
+            <button class="link-btn" data-action="toggle-service">[Install]</button>
+          </div>
+        </div>
+
+        <div class="settings-actions">
+          <button class="btn-primary is-sm" data-action="save-settings">SAVE</button>
+          <span class="save-flash" data-field="save-flash" hidden>✓ saved — supervisor reloaded config</span>
+          <span class="inline-error is-inline" data-field="settings-error" hidden><span class="bang">!!</span><span data-field="settings-error-text"></span></span>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <!-- ───────────────────────── CANCEL CONFIRM ───────────────────────── -->
+  <div class="confirm-overlay" data-field="confirm-dialog" hidden>
+    <div class="confirm-box">
+      <div class="micro-label">CONFIRM</div>
+      <div class="confirm-title">Cancel this download?</div>
+      <div class="confirm-target" data-field="confirm-target"></div>
+      <div class="confirm-note" data-field="confirm-note"></div>
+      <label class="confirm-check">
+        <input type="checkbox" data-action="confirm-delete-files" checked>
+        <span>Delete partial files on disk</span>
+      </label>
+      <div class="inline-error" data-field="confirm-error" hidden><span class="bang">!!</span><span data-field="confirm-error-text"></span></div>
+      <div class="confirm-actions">
+        <button class="link-btn" data-action="confirm-cancel-dismiss">[Keep downloading]</button>
+        <button class="link-btn is-danger" data-action="confirm-cancel-job">[Cancel download]</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ───────────────────────────── TEMPLATES ───────────────────────────── -->
+
+<template id="tpl-job-card">
+  <div class="job-card" data-field="job-card">
+    <div class="job-title-row">
+      <span class="job-index" data-field="job-index"></span>
+      <span class="job-name" data-field="job-name"></span>
+      <span class="job-subtitle" data-field="job-subtitle"></span>
+      <span class="grow"></span>
+      <span class="spinner is-sm" data-field="job-spinner" hidden></span>
+      <span class="status-dot" data-field="job-dot"></span>
+      <span class="status-label" data-field="job-status"></span>
+    </div>
+
+    <div class="job-progress-row">
+      <div class="job-percent" data-field="job-percent"></div>
+      <div class="progress is-job" data-field="job-progress">
+        <div class="progress-fill"><div class="progress-stripe"></div></div>
+      </div>
+    </div>
+
+    <div class="job-meta-row">
+      <div class="job-meta-left">
+        <span class="job-transferred" data-field="job-transferred"></span>
+        <span class="pipe">|</span>
+        <span class="job-mut" data-field="job-speed"></span>
+        <span class="pipe">|</span>
+        <span class="job-mut">ETA <span data-field="job-eta"></span></span>
+        <span class="dotted-rule is-flex"></span>
+      </div>
+      <div class="job-actions">
+        <span class="job-note" data-field="job-status-note" hidden></span>
+        <button class="link-btn" data-action="pause-job" hidden>[Pause]</button>
+        <button class="link-btn is-danger-hover" data-action="cancel-job">[Cancel]</button>
+        <button class="link-btn is-accent is-last" data-action="open-job-details">[Details ›]</button>
+      </div>
+    </div>
+
+    <div class="job-resilience" data-field="job-resilience"></div>
+  </div>
+</template>
+
+<template id="tpl-picker-row">
+  <label class="picker-row">
+    <input data-action="toggle-file" type="checkbox">
+    <span class="picker-name" data-field="picker-filename"></span>
+    <span class="picker-size" data-field="picker-filesize"></span>
+    <span class="picker-sha" data-field="picker-sha-tag"></span>
+  </label>
+</template>
+
+<template id="tpl-file-row">
+  <div class="file-row" data-field="detail-file-row">
+    <span class="file-name" data-field="file-name"></span>
+    <span class="file-size" data-field="file-size"></span>
+    <div class="progress is-file" data-field="file-progress">
+      <div class="progress-fill"><div class="progress-stripe is-file"></div></div>
+    </div>
+    <span class="file-state" data-field="file-state"></span>
+  </div>
+</template>
+
+<template id="tpl-log-row">
+  <div class="log-row" data-field="log-row">
+    <span class="log-time" data-field="log-time"></span>
+    <span class="log-glyph" data-field="log-glyph"></span>
+    <span class="log-text" data-field="log-text"></span>
+  </div>
+</template>
+
+<!-- mock loader: ?mock=1 pulls in mock-data.js before app.js boots -->
+<script>
+  if (/[?&]mock=1(&|$)/.test(location.search)) {
+    document.write('<script src="mock-data.js"><\/script>');
+  }
+</script>
+<script src="app.js"></script>
+</body>
+</html>

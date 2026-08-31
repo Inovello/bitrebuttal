@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "longrebuttal"
+version = "0.1.0"
+description = "Long Rebuttal - resilient aria2c supervisor for huge unattended downloads"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Long Rebuttal" }]
+dependencies = [
+    "httpx>=0.27",
+    "fastapi>=0.110",
+    "uvicorn>=0.29",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0"]
+
+[project.scripts]
+longrebuttal = "longrebuttal.__main__:main"
+
+[tool.setuptools]
+packages = ["longrebuttal"]
+
+[tool.setuptools.package-data]
+longrebuttal = ["static/*", "static/**/*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
