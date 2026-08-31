@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="viewport" content="width=1280" />
+<script src="./mock-data.js"></script>
+<style>
+  html, body { margin:0; padding:0; background:#0a0b0c; }
+  body { -webkit-font-smoothing:antialiased; }
+  * { box-sizing:border-box; }
+  a { color:#3fd3dd; text-decoration:none; }
+  a:hover { color:#7fe6ec; }
+  ::selection { background:#14454a; color:#e8f4f5; }
+  input, button { font-family:inherit; }
+  input:focus { outline:none; }
+  input[type="checkbox"] { accent-color:#3fd3dd; width:13px; height:13px; }
+  @keyframes lr-spin { to { transform:rotate(360deg); } }
+  @keyframes lr-blink { 0%,60% { opacity:1; } 61%,100% { opacity:.15; } }
+  ::-webkit-scrollbar { width:10px; height:10px; }
+  ::-webkit-scrollbar-track { background:#0a0b0c; }
+  ::-webkit-scrollbar-thumb { background:#1e2124; }
+</style>
+</helmet>
+
+<div style="min-width:1100px;min-height:100vh;display:grid;grid-template-columns:212px 1fr;background:#0a0b0c;color:#cfcac2;font-family:ui-monospace,'SF Mono','Cascadia Mono',Menlo,Consolas,monospace;font-size:13px;line-height:1.5;font-variant-numeric:tabular-nums">
+
+  <div style="border-right:1px solid #1c1e21;background:#08090a;padding:22px 0 18px;display:flex;flex-direction:column;position:sticky;top:0;height:100vh">
+    <div style="padding:0 18px 22px">
+      <div data-field="app-name" style="font-size:14px;letter-spacing:.02em;color:#f0ece5">LONG&nbsp;REBUTTAL</div>
+      <div data-field="app-tagline" style="font-size:11px;color:#6d6862;margin-top:6px">Downloads that finish.</div>
+    </div>
+
+    <div style="border-top:1px solid #141618;padding:12px 0">
+      <button data-action="nav-dashboard" onClick="{{ goDashboard }}" style="display:flex;gap:10px;width:100%;background:transparent;border:none;border-left:2px solid {{ navDashMark }};color:{{ navDashColor }};font-size:11.5px;letter-spacing:.14em;padding:9px 18px;cursor:pointer;text-align:left" style-hover="color:#e8e3db">DASHBOARD</button>
+      <button data-action="nav-settings" onClick="{{ goSettings }}" style="display:flex;gap:10px;width:100%;background:transparent;border:none;border-left:2px solid {{ navSetMark }};color:{{ navSetColor }};font-size:11.5px;letter-spacing:.14em;padding:9px 18px;cursor:pointer;text-align:left" style-hover="color:#e8e3db">SETTINGS</button>
+    </div>
+
+    <div style="flex:1"></div>
+
+    <div style="border-top:1px solid #141618;padding:18px 18px 0">
+      <div data-field="heartbeat" style="display:flex;align-items:flex-end;gap:4px;height:17px">
+        <sc-for list="{{ beats }}" as="b" hint-placeholder-count="8">
+          <div style="width:7px;height:{{ b.h }}px;background:{{ b.color }}"></div>
+        </sc-for>
+      </div>
+      <div data-field="backend-status" style="font-size:11px;color:#b3aea6;margin-top:12px">Supervisor is watching</div>
+      <div style="font-size:10.5px;color:#6d6862;margin-top:5px">Heartbeat {{ beatAge }} · v{{ health.version }}</div>
+      <div data-field="service-badge" style="font-size:10.5px;color:{{ serviceColor }};margin-top:10px;padding-top:10px;border-top:1px solid #141618;line-height:1.6">{{ serviceShort }}</div>
+    </div>
+  </div>
+
+  <div style="min-width:0">
+
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);border-bottom:1px solid #1c1e21">
+      <div style="padding:14px 22px;border-right:1px solid #141618">
+        <div style="font-size:10px;letter-spacing:.16em;color:#6d6862">TRANSFERRING</div>
+        <div data-field="telemetry-active" style="font-size:19px;color:#e8e3db;margin-top:6px">{{ tActive }}</div>
+      </div>
+      <div style="padding:14px 22px;border-right:1px solid #141618">
+        <div style="font-size:10px;letter-spacing:.16em;color:#6d6862">AGGREGATE</div>
+        <div data-field="telemetry-aggregate" style="font-size:19px;color:#3fd3dd;margin-top:6px">{{ tAggregate }}</div>
+      </div>
+      <div style="padding:14px 22px;border-right:1px solid #141618">
+        <div style="font-size:10px;letter-spacing:.16em;color:#6d6862">DISK FREE</div>
+        <div data-field="telemetry-disk" style="font-size:19px;color:#e8e3db;margin-top:6px">{{ tDisk }}</div>
+      </div>
+      <div style="padding:14px 22px">
+        <div style="font-size:10px;letter-spacing:.16em;color:#6d6862">AUTO-RECOVERIES</div>
+        <div data-field="telemetry-recoveries" style="font-size:19px;color:#e8e3db;margin-top:6px">{{ tRecoveries }}</div>
+      </div>
+    </div>
+
+    <sc-if value="{{ isDashboard }}" hint-placeholder-val="{{ true }}">
+    <div data-screen-label="Dashboard">
+
+      <div data-field="add-panel" style="border-bottom:1px solid #1c1e21;padding:26px 30px">
+        <div style="display:flex;align-items:center;gap:16px">
+          <span style="font-size:10px;letter-spacing:.16em;color:#6d6862">SOURCE</span>
+          <span style="color:#3fd3dd">&gt;</span>
+          <input data-field="url-input" value="{{ url }}" onChange="{{ onUrl }}" placeholder="Paste a HuggingFace repo or direct file URL…" style="flex:1;background:transparent;border:none;border-bottom:1px solid #26292c;padding:8px 2px;color:#f0ece5;font-size:13.5px" style-focus="border-bottom-color:#3fd3dd" />
+          <button data-action="resolve-url" onClick="{{ onResolve }}" style="background:transparent;border:none;color:#3fd3dd;font-size:12.5px;letter-spacing:.14em;padding:8px 2px;cursor:pointer" style-hover="color:#a6f0f5">[ RESOLVE ]</button>
+        </div>
+
+        <sc-if value="{{ isResolving }}" hint-placeholder-val="{{ false }}">
+          <div data-field="resolve-state-resolving" style="display:flex;align-items:center;gap:11px;margin-top:20px">
+            <span style="width:11px;height:11px;border:1.5px solid #22262a;border-top-color:#3fd3dd;border-radius:50%;animation:lr-spin .7s linear infinite;display:inline-block"></span>
+            <span style="font-size:12.5px;color:#8a857d">Contacting server…</span>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ isResolveError }}" hint-placeholder-val="{{ false }}">
+          <div data-field="resolve-state-error" style="margin-top:20px;font-size:12.5px;color:#e0574f">
+            <span style="color:#e0574f;margin-right:10px">!!</span>{{ resolveError }}
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ isResolved }}" hint-placeholder-val="{{ false }}">
+        <div data-field="resolve-state-resolved" style="margin-top:26px">
+          <div style="display:flex;align-items:baseline;gap:16px;padding-bottom:10px">
+            <span data-field="resolved-repo" style="font-size:14px;color:#f0ece5">{{ resolved.repo }}</span>
+            <span style="font-size:10.5px;color:#6d6862">@{{ resolved.revision }} · resolved {{ resolved.resolvedAt }}</span>
+          </div>
+
+          <div data-field="file-picker" style="border-top:1px solid #1c1e21">
+            <div style="display:grid;grid-template-columns:30px 1fr 110px 150px;gap:14px;padding:8px 0;border-bottom:1px solid #141618;font-size:10px;letter-spacing:.14em;color:#6d6862">
+              <span></span><span>FILE</span><span style="text-align:right">SIZE</span><span style="text-align:right">CHECKSUM</span>
+            </div>
+            <sc-for list="{{ pickFiles }}" as="f" hint-placeholder-count="4">
+              <label style="display:grid;grid-template-columns:30px 1fr 110px 150px;gap:14px;align-items:center;padding:8px 0;border-bottom:1px solid #141618;cursor:pointer" style-hover="background:#0e1011">
+                <input data-action="toggle-file" type="checkbox" checked="{{ f.selected }}" onChange="{{ f.onToggle }}" />
+                <span data-field="picker-filename" style="font-size:12.5px;color:{{ f.nameColor }};overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ f.name }}</span>
+                <span data-field="picker-filesize" style="font-size:12.5px;color:#8a857d;text-align:right">{{ f.sizeLabel }}</span>
+                <span data-field="picker-sha-tag" style="font-size:10.5px;letter-spacing:.06em;color:{{ f.shaColor }};text-align:right">{{ f.shaLabel }}</span>
+              </label>
+            </sc-for>
+          </div>
+
+          <div style="margin-top:18px;display:flex;align-items:flex-end;gap:40px">
+            <div style="flex:1;max-width:640px;display:flex;flex-direction:column;gap:8px">
+              <div style="display:flex;align-items:baseline;gap:10px">
+                <span style="font-size:10px;letter-spacing:.14em;color:#6d6862">SELECTED</span>
+                <span style="flex:1;border-bottom:1px dotted #26292c;transform:translateY(-3px)"></span>
+                <span data-field="selection-summary" style="font-size:13px;color:#f0ece5">{{ selSummary }}</span>
+              </div>
+              <div style="display:flex;align-items:baseline;gap:10px">
+                <span style="font-size:10px;letter-spacing:.14em;color:#6d6862">FREE SPACE</span>
+                <span style="flex:1;border-bottom:1px dotted #26292c;transform:translateY(-3px)"></span>
+                <span data-field="free-space" style="font-size:12.5px;color:{{ freeColor }}">{{ freeSpaceLabel }}</span>
+              </div>
+              <div style="display:flex;align-items:baseline;gap:10px">
+                <span style="font-size:10px;letter-spacing:.14em;color:#6d6862">DESTINATION</span>
+                <span style="flex:1;border-bottom:1px dotted #26292c;transform:translateY(-3px)"></span>
+                <span data-field="destination-path" style="font-size:12.5px;color:#8a857d">{{ settings.destination }}</span>
+                <button data-action="change-destination" onClick="{{ onChangeDest }}" style="background:none;border:none;color:#3fd3dd;font-size:11.5px;padding:0;cursor:pointer" style-hover="color:#a6f0f5">Change</button>
+              </div>
+              <sc-if value="{{ overCapacity }}" hint-placeholder-val="{{ false }}">
+                <div data-field="capacity-error" style="font-size:12.5px;color:#e0574f;margin-top:6px"><span style="margin-right:10px">!!</span>{{ capacityError }}</div>
+              </sc-if>
+            </div>
+            <div style="flex:1"></div>
+            <sc-if value="{{ canStart }}" hint-placeholder-val="{{ true }}">
+              <button data-action="start-download" onClick="{{ onStart }}" style="background:#0f2b2e;border:1px solid #3fd3dd;color:#8fe9f0;padding:14px 32px;font-size:13px;letter-spacing:.14em;cursor:pointer" style-hover="background:#14383c;color:#d5f7fa">START DOWNLOAD</button>
+            </sc-if>
+            <sc-if value="{{ cannotStart }}" hint-placeholder-val="{{ false }}">
+              <button data-action="start-download" disabled="{{ true }}" style="background:transparent;border:1px solid #22262a;color:#45423e;padding:14px 32px;font-size:13px;letter-spacing:.14em;cursor:not-allowed">START DOWNLOAD</button>
+            </sc-if>
+          </div>
+        </div>
+        </sc-if>
+      </div>
+
+      <div style="display:flex;align-items:center;gap:14px;padding:16px 30px 10px">
+        <span style="font-size:10px;letter-spacing:.16em;color:#6d6862">JOB QUEUE</span>
+        <span data-field="job-count" style="font-size:10px;color:#3fd3dd">{{ jobCount }}</span>
+        <span style="flex:1;border-bottom:1px solid #141618"></span>
+      </div>
+
+      <sc-if value="{{ noJobs }}" hint-placeholder-val="{{ false }}">
+        <div data-field="empty-state" style="padding:110px 30px;text-align:center;border-top:1px solid #141618">
+          <div style="font-size:14px;color:#8a857d;letter-spacing:.04em">NOTHING DOWNLOADING</div>
+          <div style="font-size:12.5px;color:#6d6862;margin-top:10px">Paste a link above — then feel free to reboot, sleep, or walk away.</div>
+        </div>
+      </sc-if>
+
+      <sc-for list="{{ jobs }}" as="job" hint-placeholder-count="3">
+        <div data-field="job-card" style="border-top:1px solid #141618;padding:20px 30px 18px" style-hover="background:#0c0d0e">
+
+          <div style="display:flex;align-items:baseline;gap:14px">
+            <span data-field="job-index" style="font-size:11px;color:#45423e">{{ job.index }}</span>
+            <span data-field="job-name" style="font-size:14px;color:#f0ece5;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ job.name }}</span>
+            <span style="font-size:11px;color:#6d6862">{{ job.subtitle }}</span>
+            <span style="flex:1"></span>
+            <sc-if value="{{ job.spinner }}" hint-placeholder-val="{{ false }}">
+              <span style="width:9px;height:9px;border:1.5px solid #22262a;border-top-color:{{ job.color }};border-radius:50%;animation:lr-spin .7s linear infinite;display:inline-block"></span>
+            </sc-if>
+            <span style="width:7px;height:7px;background:{{ job.color }}"></span>
+            <span data-field="job-status" style="font-size:11px;letter-spacing:.16em;color:{{ job.color }}">{{ job.statusLabel }}</span>
+          </div>
+
+          <div style="display:grid;grid-template-columns:132px 1fr;gap:22px;align-items:center;margin-top:16px">
+            <div data-field="job-percent" style="font-size:34px;letter-spacing:-0.03em;color:{{ job.color }};line-height:1">{{ job.pctLabel }}</div>
+            <div data-field="job-progress" style="height:26px;background-image:repeating-linear-gradient(90deg,#191b1d 0 9px,rgba(0,0,0,0) 9px 12px);position:relative">
+              <div style="position:absolute;top:0;left:0;bottom:0;width:{{ job.pct }}%;overflow:hidden;transition:width .9s linear">
+                <div style="position:absolute;top:0;left:0;bottom:0;width:1900px;background-image:repeating-linear-gradient(90deg,{{ job.color }} 0 9px,rgba(0,0,0,0) 9px 12px)"></div>
+              </div>
+            </div>
+          </div>
+
+          <div style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:18px;align-items:baseline;margin-top:16px;font-size:12px">
+            <div style="display:flex;align-items:baseline;min-width:0;overflow:hidden;white-space:nowrap">
+              <span data-field="job-transferred" style="color:#cfcac2">{{ job.transferred }}</span>
+              <span style="color:#33363a;padding:0 9px">|</span>
+              <span data-field="job-speed" style="color:#8a857d">{{ job.speedLabel }}</span>
+              <span style="color:#33363a;padding:0 9px">|</span>
+              <span data-field="job-eta" style="color:#8a857d">ETA {{ job.etaLabel }}</span>
+              <span style="flex:1 1 auto;min-width:0;border-bottom:1px dotted #1e2124;margin:0 14px;transform:translateY(-4px)"></span>
+            </div>
+            <div style="display:flex;align-items:baseline;white-space:nowrap">
+              <sc-if value="{{ job.statusNote }}" hint-placeholder-val="{{ false }}">
+                <span style="color:{{ job.color }};margin-right:16px;font-size:11.5px">{{ job.statusNote }}</span>
+              </sc-if>
+              <sc-if value="{{ job.showPause }}" hint-placeholder-val="{{ true }}">
+                <button data-action="pause-job" onClick="{{ job.onPause }}" style="background:none;border:none;color:#8a857d;font-size:11.5px;letter-spacing:.08em;padding:0 10px;cursor:pointer" style-hover="color:#f0ece5">[{{ job.pauseLabel }}]</button>
+              </sc-if>
+              <button data-action="cancel-job" onClick="{{ job.onCancel }}" style="background:none;border:none;color:#8a857d;font-size:11.5px;letter-spacing:.08em;padding:0 10px;cursor:pointer" style-hover="color:#e0574f">[Cancel]</button>
+              <button data-action="open-job-details" onClick="{{ job.onDetails }}" style="background:none;border:none;color:#3fd3dd;font-size:11.5px;letter-spacing:.08em;padding:0 0 0 10px;cursor:pointer" style-hover="color:#a6f0f5">[Details ›]</button>
+            </div>
+          </div>
+
+          <div data-field="job-resilience" style="margin-top:10px;font-size:12px;color:{{ job.resilienceColor }}">↻ {{ job.resilience }}</div>
+        </div>
+      </sc-for>
+      <div style="border-top:1px solid #141618;height:60px"></div>
+    </div>
+    </sc-if>
+
+    <sc-if value="{{ isDetail }}" hint-placeholder-val="{{ false }}">
+    <div data-screen-label="Job detail">
+
+      <div style="padding:20px 30px 22px;border-bottom:1px solid #1c1e21">
+        <button data-action="back-to-dashboard" onClick="{{ goDashboard }}" style="background:none;border:none;color:#8a857d;font-size:11.5px;letter-spacing:.1em;padding:0;margin-bottom:20px;cursor:pointer" style-hover="color:#3fd3dd">‹ BACK</button>
+
+        <div style="display:flex;align-items:baseline;gap:16px">
+          <span data-field="detail-name" style="font-size:17px;color:#f0ece5">{{ detail.name }}</span>
+          <span style="flex:1"></span>
+          <sc-if value="{{ detail.spinner }}" hint-placeholder-val="{{ false }}">
+            <span style="width:9px;height:9px;border:1.5px solid #22262a;border-top-color:{{ detail.color }};border-radius:50%;animation:lr-spin .7s linear infinite;display:inline-block"></span>
+          </sc-if>
+          <span style="width:7px;height:7px;background:{{ detail.color }}"></span>
+          <span data-field="detail-status" style="font-size:11px;letter-spacing:.16em;color:{{ detail.color }}">{{ detail.statusLabel }}</span>
+        </div>
+        <div style="font-size:11.5px;color:#6d6862;margin-top:8px">{{ detail.dest }}</div>
+
+        <div style="display:grid;grid-template-columns:170px 1fr;gap:24px;align-items:center;margin-top:22px">
+          <div data-field="detail-percent" style="font-size:44px;letter-spacing:-0.03em;color:{{ detail.color }};line-height:1">{{ detail.pctLabel }}</div>
+          <div>
+            <div data-field="detail-progress" style="height:34px;background-image:repeating-linear-gradient(90deg,#191b1d 0 9px,rgba(0,0,0,0) 9px 12px);position:relative">
+              <div style="position:absolute;top:0;left:0;bottom:0;width:{{ detail.pct }}%;overflow:hidden;transition:width .9s linear">
+                <div style="position:absolute;top:0;left:0;bottom:0;width:1900px;background-image:repeating-linear-gradient(90deg,{{ detail.color }} 0 9px,rgba(0,0,0,0) 9px 12px)"></div>
+              </div>
+            </div>
+            <div data-field="detail-transferred" style="font-size:12.5px;color:#8a857d;margin-top:10px">{{ detail.transferred }} · {{ detail.speedLabel }} · ETA {{ detail.etaLabel }}</div>
+          </div>
+        </div>
+      </div>
+
+      <div data-field="detail-stats" style="display:grid;grid-template-columns:repeat(4,1fr);border-bottom:1px solid #1c1e21">
+        <div style="padding:14px 22px;border-right:1px solid #141618">
+          <div style="font-size:10px;letter-spacing:.16em;color:#6d6862">AUTO-RECOVERIES</div>
+          <div data-field="stat-recoveries" style="font-size:19px;color:#3fd3dd;margin-top:6px">{{ detail.recoveries }}</div>
+        </div>
+        <div style="padding:14px 22px;border-right:1px solid #141618">
+          <div style="font-size:10px;letter-spacing:.16em;color:#6d6862">AVERAGE SPEED</div>
+          <div data-field="stat-avg-speed" style="font-size:19px;color:#e8e3db;margin-top:6px">{{ detail.avgSpeedLabel }}</div>
+        </div>
+        <div style="padding:14px 22px;border-right:1px solid #141618">
+          <div style="font-size:10px;letter-spacing:.16em;color:#6d6862">ELAPSED</div>
+          <div data-field="stat-elapsed" style="font-size:19px;color:#e8e3db;margin-top:6px">{{ detail.elapsedLabel }}</div>
+        </div>
+        <div style="padding:14px 22px">
+          <div style="font-size:10px;letter-spacing:.16em;color:#6d6862">STARTED</div>
+          <div data-field="stat-started" style="font-size:13px;color:#b3aea6;margin-top:11px">{{ detail.startedLabel }}</div>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1.1fr 1fr">
+        <div style="border-right:1px solid #1c1e21">
+          <div style="padding:14px 26px;border-bottom:1px solid #141618;font-size:10px;letter-spacing:.16em;color:#6d6862">FILES</div>
+          <sc-for list="{{ detail.files }}" as="f" hint-placeholder-count="5">
+            <div data-field="detail-file-row" style="display:grid;grid-template-columns:1fr 84px 120px 96px;gap:16px;align-items:center;padding:11px 26px;border-bottom:1px solid #111314">
+              <span data-field="file-name" style="font-size:12.5px;color:#cfcac2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ f.name }}</span>
+              <span data-field="file-size" style="font-size:12px;color:#8a857d;text-align:right">{{ f.sizeLabel }}</span>
+              <div data-field="file-progress" style="height:10px;background-image:repeating-linear-gradient(90deg,#191b1d 0 5px,rgba(0,0,0,0) 5px 7px);position:relative">
+                <div style="position:absolute;top:0;left:0;bottom:0;width:{{ f.progress }}%;overflow:hidden">
+                  <div style="position:absolute;top:0;left:0;bottom:0;width:400px;background-image:repeating-linear-gradient(90deg,{{ f.color }} 0 5px,rgba(0,0,0,0) 5px 7px)"></div>
+                </div>
+              </div>
+              <span data-field="file-state" style="font-size:11.5px;color:{{ f.color }};text-align:right">{{ f.stateLabel }}</span>
+            </div>
+          </sc-for>
+        </div>
+
+        <div>
+          <div style="padding:14px 26px;border-bottom:1px solid #141618;font-size:10px;letter-spacing:.16em;color:#6d6862">EVENT LOG</div>
+          <div data-field="event-log">
+            <sc-for list="{{ detail.log }}" as="e" hint-placeholder-count="6">
+              <div data-field="log-row" style="display:grid;grid-template-columns:44px 14px 1fr;gap:10px;padding:9px 26px;border-bottom:1px solid #111314;font-size:12px;line-height:1.55">
+                <span data-field="log-time" style="color:#45423e">{{ e.time }}</span>
+                <span style="color:{{ e.color }}">{{ e.glyph }}</span>
+                <span data-field="log-text" style="color:{{ e.color }};text-wrap:pretty">{{ e.text }}</span>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+    </div>
+    </sc-if>
+
+    <sc-if value="{{ isSettings }}" hint-placeholder-val="{{ false }}">
+    <div data-screen-label="Settings" style="padding:26px 30px 80px;max-width:820px">
+      <div style="font-size:10px;letter-spacing:.16em;color:#6d6862;margin-bottom:22px">SUPERVISOR CONFIGURATION</div>
+
+      <div style="display:grid;grid-template-columns:230px 1fr;gap:26px;align-items:center;padding:16px 0;border-top:1px solid #141618">
+        <div>
+          <div style="font-size:12.5px;color:#e8e3db">Default destination</div>
+          <div style="font-size:11px;color:#6d6862;margin-top:4px">New jobs land here.</div>
+        </div>
+        <input data-field="setting-destination" value="{{ settings.destination }}" onChange="{{ onDest }}" style="background:transparent;border:none;border-bottom:1px solid #26292c;padding:8px 2px;color:#f0ece5;font-size:12.5px;width:100%" style-focus="border-bottom-color:#3fd3dd" />
+      </div>
+
+      <div style="display:grid;grid-template-columns:230px 1fr;gap:26px;align-items:center;padding:16px 0;border-top:1px solid #141618">
+        <div>
+          <div style="font-size:12.5px;color:#e8e3db">Connections per download</div>
+          <div style="font-size:11px;color:#6d6862;margin-top:4px">Higher is faster until the host throttles.</div>
+        </div>
+        <input data-field="setting-connections" type="number" min="1" max="16" value="{{ settings.connections }}" onChange="{{ onConns }}" style="background:transparent;border:none;border-bottom:1px solid #26292c;padding:8px 2px;color:#f0ece5;font-size:12.5px;width:80px" style-focus="border-bottom-color:#3fd3dd" />
+      </div>
+
+      <div style="display:grid;grid-template-columns:230px 1fr;gap:26px;align-items:center;padding:16px 0;border-top:1px solid #141618">
+        <div>
+          <div style="font-size:12.5px;color:#e8e3db">Stall sensitivity</div>
+          <div style="font-size:11px;color:#6d6862;margin-top:4px">When to assume aria2c is stuck.</div>
+        </div>
+        <div data-field="setting-stall" style="display:flex;gap:26px">
+          <label style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:#b3aea6;cursor:pointer">
+            <input data-action="set-stall-low" type="radio" name="stall" checked="{{ stallLow }}" onChange="{{ onStallLow }}" style="accent-color:#3fd3dd" />Low
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:#b3aea6;cursor:pointer">
+            <input data-action="set-stall-normal" type="radio" name="stall" checked="{{ stallNormal }}" onChange="{{ onStallNormal }}" style="accent-color:#3fd3dd" />Normal
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:#b3aea6;cursor:pointer">
+            <input data-action="set-stall-high" type="radio" name="stall" checked="{{ stallHigh }}" onChange="{{ onStallHigh }}" style="accent-color:#3fd3dd" />High
+          </label>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:230px 1fr;gap:26px;align-items:center;padding:16px 0;border-top:1px solid #141618;border-bottom:1px solid #141618">
+        <div>
+          <div style="font-size:12.5px;color:#e8e3db">Start on boot</div>
+          <div style="font-size:11px;color:#6d6862;margin-top:4px">Windows service that supervises jobs.</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:20px">
+          <span data-field="service-status" style="font-size:12.5px;color:{{ serviceColor }}">{{ serviceLabel }}</span>
+          <span style="flex:1"></span>
+          <button data-action="toggle-service" onClick="{{ onToggleService }}" style="background:none;border:none;color:#8a857d;font-size:11.5px;letter-spacing:.1em;padding:0;cursor:pointer;white-space:nowrap" style-hover="color:#3fd3dd">[{{ serviceButton }}]</button>
+        </div>
+      </div>
+
+      <div style="display:flex;align-items:center;gap:20px;margin-top:26px">
+        <button data-action="save-settings" onClick="{{ onSave }}" style="background:#0f2b2e;border:1px solid #3fd3dd;color:#8fe9f0;padding:12px 30px;font-size:12.5px;letter-spacing:.14em;cursor:pointer" style-hover="background:#14383c;color:#d5f7fa">SAVE</button>
+        <sc-if value="{{ saved }}" hint-placeholder-val="{{ false }}">
+          <span data-field="save-flash" style="font-size:12px;color:#3fd3dd">✓ saved — supervisor reloaded config</span>
+        </sc-if>
+      </div>
+    </div>
+    </sc-if>
+  </div>
+
+  <sc-if value="{{ confirmOpen }}" hint-placeholder-val="{{ false }}">
+    <div data-field="confirm-dialog" style="position:fixed;inset:0;background:rgba(4,5,6,0.78);display:flex;align-items:center;justify-content:center;z-index:20">
+      <div style="width:460px;background:#0c0d0e;border:1px solid #26292c;padding:26px 28px">
+        <div style="font-size:10px;letter-spacing:.16em;color:#6d6862">CONFIRM</div>
+        <div style="font-size:14px;color:#f0ece5;margin-top:12px">Cancel this download?</div>
+        <div data-field="confirm-target" style="font-size:12.5px;color:#8a857d;margin-top:14px">{{ confirmName }}</div>
+        <div style="font-size:12px;color:#6d6862;margin-top:6px">{{ confirmNote }}</div>
+        <div style="display:flex;justify-content:flex-end;gap:22px;margin-top:26px">
+          <button data-action="confirm-cancel-dismiss" onClick="{{ onDismissConfirm }}" style="background:none;border:none;color:#8a857d;font-size:12px;letter-spacing:.08em;padding:0;cursor:pointer" style-hover="color:#f0ece5">[Keep downloading]</button>
+          <button data-action="confirm-cancel-job" onClick="{{ onConfirmCancel }}" style="background:none;border:none;color:#e0574f;font-size:12px;letter-spacing:.08em;padding:0;cursor:pointer" style-hover="color:#f59891">[Cancel download]</button>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;startView&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;dashboard&quot;,&quot;detail&quot;,&quot;settings&quot;],&quot;default&quot;:&quot;dashboard&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Preview&quot;},&quot;liveTick&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Preview&quot;},&quot;forceEmpty&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Preview&quot;}}">
+const MOCK = (typeof window !== "undefined" && window.LR_MOCK) || null;
+
+const STATUS = {
+  DOWNLOADING: { label: "DOWNLOADING", color: "#3fd3dd" },
+  RECOVERING:  { label: "RECOVERING",  color: "#d6982f", spinner: true, note: "Relaunching aria2c" },
+  VERIFYING:   { label: "VERIFYING",   color: "#3fd3dd", spinner: true, note: "Checking SHA256…" },
+  PAUSED:      { label: "PAUSED",      color: "#7a756e" },
+  COMPLETE:    { label: "COMPLETE ✓",  color: "#63c98a" },
+  FAILED:      { label: "FAILED",      color: "#e0574f" }
+};
+
+const FILE_STATE = {
+  queued:      { label: "Queued",      color: "#4a4744" },
+  downloading: { label: "Downloading", color: "#3fd3dd" },
+  done:        { label: "Done ✓",      color: "#63c98a" },
+  verifying:   { label: "Verifying",   color: "#d6982f" },
+  corrupt:     { label: "Corrupt ✗",   color: "#e0574f" }
+};
+
+const LEVEL = {
+  info: { color: "#8a857d", glyph: "·" },
+  warn: { color: "#d6982f", glyph: "!" },
+  ok:   { color: "#63c98a", glyph: "✓" },
+  err:  { color: "#e0574f", glyph: "✗" }
+};
+
+const gb = (b) => (b / 1e9).toFixed(1) + " GB";
+
+function speedLabel(bps) {
+  if (!bps) return "—";
+  if (bps >= 1e6) return (bps / 1e6).toFixed(1) + " MB/s";
+  return Math.round(bps / 1e3) + " KB/s";
+}
+
+function etaLabel(sec) {
+  if (sec === null || sec === undefined) return "—";
+  if (sec <= 0) return "done";
+  const d = Math.floor(sec / 86400), h = Math.floor((sec % 86400) / 3600), m = Math.floor((sec % 3600) / 60);
+  if (d) return d + "d " + h + "h";
+  if (h) return h + "h " + String(m).padStart(2, "0") + "m";
+  return m + "m " + String(Math.floor(sec % 60)).padStart(2, "0") + "s";
+}
+
+class Component extends DCLogic {
+  state = {
+    view: this.props.startView || "dashboard",
+    jobId: null,
+    jobs: this.props.forceEmpty ? [] : (MOCK ? MOCK.jobs.map((j) => Object.assign({}, j)) : []),
+    url: "",
+    resolve: "idle",
+    resolveError: "",
+    picker: MOCK ? MOCK.resolved.files.map((f) => Object.assign({}, f)) : [],
+    settings: MOCK ? Object.assign({}, MOCK.settings) : { destination: "", connections: 4, stallSensitivity: "Normal", serviceInstalled: true },
+    saved: false,
+    confirm: null,
+    beat: 0
+  };
+
+  componentDidMount() {
+    if (this.props.liveTick === false) return;
+    this._tick = setInterval(() => {
+      this.setState((s) => ({
+        beat: (s.beat + 1) % 8,
+        jobs: s.jobs.map((j) => {
+          if (j.status !== "DOWNLOADING") return j;
+          const speed = j.speedBps * (0.9 + Math.random() * 0.22);
+          const done = Math.min(j.totalBytes, j.doneBytes + speed);
+          const remain = j.totalBytes - done;
+          return Object.assign({}, j, { doneBytes: done, speedBps: speed, etaSeconds: speed > 0 ? Math.round(remain / speed) : null });
+        })
+      }));
+    }, 1000);
+  }
+
+  componentWillUnmount() { clearInterval(this._tick); clearTimeout(this._resolveT); clearTimeout(this._savedT); }
+
+  deco(j, i) {
+    const meta = STATUS[j.status] || STATUS.PAUSED;
+    const pct = j.totalBytes ? (j.doneBytes / j.totalBytes) * 100 : 0;
+    const lost = j.bytesLost > 0 ? gb(j.bytesLost) + " lost" : "0 bytes lost";
+    return {
+      id: j.id,
+      index: String((i || 0) + 1).padStart(2, "0"),
+      name: j.name,
+      subtitle: j.subtitle,
+      color: meta.color,
+      spinner: !!meta.spinner,
+      statusLabel: meta.label,
+      statusNote: meta.note || "",
+      pct: pct.toFixed(2),
+      pctLabel: pct.toFixed(1) + "%",
+      transferred: gb(j.doneBytes) + " / " + gb(j.totalBytes),
+      speedLabel: speedLabel(j.speedBps),
+      etaLabel: j.status === "COMPLETE" ? "—" : etaLabel(j.etaSeconds),
+      dest: j.dest,
+      recoveries: j.recoveries,
+      avgSpeedLabel: speedLabel(j.avgSpeedBps),
+      elapsedLabel: j.elapsedLabel,
+      startedLabel: j.startedLabel,
+      resilience: j.recoveries + " auto-recoveries · " + lost,
+      resilienceColor: j.bytesLost > 0 ? "#d6982f" : "#63c98a",
+      showPause: j.status === "DOWNLOADING" || j.status === "PAUSED" || j.status === "RECOVERING",
+      pauseLabel: j.status === "PAUSED" ? "Resume" : "Pause",
+      onPause: () => this.togglePause(j.id),
+      onCancel: () => this.setState({ confirm: { id: j.id, name: j.name, done: gb(j.doneBytes) } }),
+      onDetails: () => this.setState({ view: "detail", jobId: j.id }),
+      files: (j.files || []).map((f) => {
+        const fs = FILE_STATE[f.state] || FILE_STATE.queued;
+        return { name: f.name, sizeLabel: gb(f.bytes), progress: f.progress, stateLabel: fs.label, color: fs.color };
+      }),
+      log: (j.log || []).map((e) => {
+        const lv = LEVEL[e.level] || LEVEL.info;
+        return { time: e.time, text: e.text, color: lv.color, glyph: lv.glyph };
+      })
+    };
+  }
+
+  togglePause(id) {
+    this.setState((s) => ({
+      jobs: s.jobs.map((j) => {
+        if (j.id !== id) return j;
+        if (j.status === "PAUSED") return Object.assign({}, j, { status: "DOWNLOADING", speedBps: j.avgSpeedBps || 2.1e6 });
+        return Object.assign({}, j, { status: "PAUSED", speedBps: 0, etaSeconds: null });
+      })
+    }));
+  }
+
+  renderVals() {
+    const s = this.state;
+    const mock = MOCK || { disk: { freeBytes: 0, volumeLabel: "D:" }, resolved: { repo: "", revision: "", resolvedAt: "" }, backend: { healthy: true, label: "", uptime: "", version: "" } };
+    const jobs = s.jobs.map((j, i) => this.deco(j, i));
+    const active = s.jobs.filter((j) => j.status === "DOWNLOADING");
+    const agg = active.reduce((a, j) => a + j.speedBps, 0);
+    const totalRecoveries = s.jobs.reduce((a, j) => a + j.recoveries, 0);
+
+    const selected = s.picker.filter((f) => f.selected);
+    const selBytes = selected.reduce((a, f) => a + f.bytes, 0);
+    const free = mock.disk.freeBytes;
+    const over = selBytes > free;
+
+    const blank = { id: "", name: "", subtitle: "", status: "PAUSED", totalBytes: 1, doneBytes: 0, speedBps: 0, dest: "", recoveries: 0, elapsedLabel: "", startedLabel: "", files: [], log: [] };
+    const target = s.jobs.find((j) => j.id === s.jobId) || s.jobs[0] || blank;
+    const detail = this.deco(target, s.jobs.indexOf(target));
+
+    return {
+      isDashboard: s.view === "dashboard",
+      isDetail: s.view === "detail",
+      isSettings: s.view === "settings",
+      goDashboard: () => this.setState({ view: "dashboard" }),
+      goSettings: () => this.setState({ view: "settings", saved: false }),
+      navDashMark: s.view === "settings" ? "transparent" : "#3fd3dd",
+      navDashColor: s.view === "settings" ? "#6d6862" : "#f0ece5",
+      navSetMark: s.view === "settings" ? "#3fd3dd" : "transparent",
+      navSetColor: s.view === "settings" ? "#f0ece5" : "#6d6862",
+
+      health: {
+        dot: mock.backend.healthy ? "#3fd3dd" : "#e0574f",
+        upper: (mock.backend.label || "").toUpperCase(),
+        uptime: mock.backend.uptime,
+        version: mock.backend.version
+      },
+      serviceShort: s.settings.serviceInstalled ? "Installed, resumes after reboot" : "Not installed",
+      beats: [0, 1, 2, 3, 4, 5, 6, 7].map((i) => {
+        const d = (i - s.beat + 8) % 8;
+        const wave = [17, 13, 9, 6, 5, 5, 5, 5];
+        return { h: wave[d], color: d === 0 ? "#5ee3ec" : d < 3 ? "#3fd3dd" : d < 5 ? "#1f6d73" : "#1c1f21" };
+      }),
+      beatAge: (s.beat % 4) + "s ago",
+
+      tActive: String(active.length).padStart(2, "0") + " / " + String(s.jobs.length).padStart(2, "0"),
+      tAggregate: speedLabel(agg),
+      tDisk: gb(free),
+      tRecoveries: String(totalRecoveries),
+
+      url: s.url,
+      onUrl: (e) => this.setState({ url: e.target.value }),
+      isResolving: s.resolve === "resolving",
+      isResolved: s.resolve === "resolved",
+      isResolveError: s.resolve === "error",
+      resolveError: s.resolveError,
+      onResolve: () => {
+        const v = s.url.trim();
+        if (!v) {
+          this.setState({ resolve: "error", resolveError: "Paste a HuggingFace repo id or a direct file URL first." });
+          return;
+        }
+        if (/^https?:\/\//i.test(v) && !/huggingface\.co/i.test(v)) {
+          this.setState({ resolve: "error", resolveError: "Could not reach " + v.replace(/^https?:\/\//i, "").split("/")[0] + " — check the URL or your connection." });
+          return;
+        }
+        this.setState({ resolve: "resolving", resolveError: "" });
+        clearTimeout(this._resolveT);
+        this._resolveT = setTimeout(() => this.setState({ resolve: "resolved" }), 1400);
+      },
+
+      resolved: mock.resolved,
+      pickFiles: s.picker.map((f, i) => ({
+        name: f.name,
+        sizeLabel: gb(f.bytes),
+        selected: f.selected,
+        nameColor: f.selected ? "#f0ece5" : "#7a756e",
+        shaLabel: f.sha256 ? "SHA256 ✓ available" : "No hash published",
+        shaColor: f.sha256 ? "#4e8f6c" : "#4a4744",
+        onToggle: () => this.setState((st) => ({ picker: st.picker.map((g, k) => (k === i ? Object.assign({}, g, { selected: !g.selected }) : g)) }))
+      })),
+      selSummary: selected.length + (selected.length === 1 ? " file — " : " files — ") + gb(selBytes),
+      freeSpaceLabel: gb(free) + " free on " + mock.disk.volumeLabel,
+      freeColor: over ? "#e0574f" : "#8a857d",
+      overCapacity: over,
+      capacityError: "Selection exceeds free space by " + gb(selBytes - free) + " — deselect files or pick another drive.",
+      canStart: !over && selected.length > 0,
+      cannotStart: over || selected.length === 0,
+      onChangeDest: () => {
+        const next = window.prompt("Destination folder", s.settings.destination);
+        if (next) this.setState({ settings: Object.assign({}, s.settings, { destination: next }) });
+      },
+      onStart: () => {
+        const total = selBytes;
+        const job = {
+          id: "job-" + Date.now(),
+          name: mock.resolved.repo,
+          subtitle: selected.length + " files · queued just now",
+          status: "DOWNLOADING",
+          dest: s.settings.destination,
+          totalBytes: total,
+          doneBytes: 0,
+          speedBps: 2.4e6,
+          etaSeconds: Math.round(total / 2.4e6),
+          recoveries: 0,
+          bytesLost: 0,
+          startedLabel: "just now",
+          elapsedLabel: "0m",
+          avgSpeedBps: 2.4e6,
+          files: selected.map((f, i) => ({ name: f.name, bytes: f.bytes, progress: 0, state: i === 0 ? "downloading" : "queued" })),
+          log: [{ time: "now", level: "info", text: "Job created — " + selected.length + " files queued, " + gb(total) + " total" }]
+        };
+        this.setState({ jobs: [job].concat(s.jobs), resolve: "idle", url: "" });
+      },
+
+      jobs,
+      jobCount: s.jobs.length === 0 ? "EMPTY" : String(s.jobs.length).padStart(2, "0"),
+      noJobs: s.jobs.length === 0,
+
+      detail,
+
+      settings: s.settings,
+      onDest: (e) => this.setState({ settings: Object.assign({}, s.settings, { destination: e.target.value }), saved: false }),
+      onConns: (e) => this.setState({ settings: Object.assign({}, s.settings, { connections: e.target.value }), saved: false }),
+      stallLow: s.settings.stallSensitivity === "Low",
+      stallNormal: s.settings.stallSensitivity === "Normal",
+      stallHigh: s.settings.stallSensitivity === "High",
+      onStallLow: () => this.setState({ settings: Object.assign({}, s.settings, { stallSensitivity: "Low" }), saved: false }),
+      onStallNormal: () => this.setState({ settings: Object.assign({}, s.settings, { stallSensitivity: "Normal" }), saved: false }),
+      onStallHigh: () => this.setState({ settings: Object.assign({}, s.settings, { stallSensitivity: "High" }), saved: false }),
+      serviceLabel: s.settings.serviceInstalled ? "Installed ✓ — downloads resume after reboot" : "Not installed — downloads stop when you log out",
+      serviceColor: s.settings.serviceInstalled ? "#63c98a" : "#d6982f",
+      serviceButton: s.settings.serviceInstalled ? "Remove" : "Install",
+      saved: s.saved,
+      onSave: () => {
+        this.setState({ saved: true });
+        clearTimeout(this._savedT);
+        this._savedT = setTimeout(() => this.setState({ saved: false }), 2600);
+      },
+
+      confirmOpen: !!s.confirm,
+      confirmName: s.confirm ? s.confirm.name : "",
+      confirmNote: s.confirm ? s.confirm.done + " already on disk will be deleted. This cannot be undone." : "",
+      onDismissConfirm: () => this.setState({ confirm: null }),
+      onConfirmCancel: () => this.setState((st) => ({ jobs: st.jobs.filter((j) => j.id !== st.confirm.id), confirm: null, view: "dashboard" }))
+    };
+  }
+}
+
+</script>
+</body>
+</html>
