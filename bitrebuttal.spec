@@ -10,6 +10,10 @@
 
 import sys
 
+# Windows exes take the .ico; the macOS app bundle takes the .icns (EXE icon
+# is a Windows-resource concept - pass None elsewhere).
+icon_file = 'packaging/icon.ico' if sys.platform == 'win32' else None
+
 datas = [('bitrebuttal/static', 'bitrebuttal/static')]
 hiddenimports = [
     'uvicorn.logging',
@@ -69,6 +73,7 @@ else:
         strip=False,
         upx=False,
         console=True,
+        icon=icon_file,
     )
 
     # Windowed native shell (Windows + macOS).
@@ -85,13 +90,14 @@ else:
         strip=False,
         upx=False,
         console=False,
+        icon=icon_file,
     )
 
     if sys.platform == 'darwin':
         app = BUNDLE(
             exe_gui,
             name='BitRebuttal.app',
-            icon=None,
+            icon='packaging/icon.icns',
             bundle_identifier='com.bitrebuttal.app',
             info_plist={'NSHighResolutionCapable': True},
         )
