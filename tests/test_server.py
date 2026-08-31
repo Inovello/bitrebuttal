@@ -99,7 +99,8 @@ def test_status_v2_fields_and_defaults(client):
                       "verifyChecksums", "bandwidthCapMBs", "quietHours", "theme", "hfTokenSet"}
     assert s["verifyChecksums"] is True
     assert s["bandwidthCapMBs"] == 0
-    assert s["quietHours"] == {"enabled": False, "start": "23:00", "end": "07:30"}
+    assert s["quietHours"] == {"enabled": False, "start": "23:00", "end": "07:30",
+                               "limitMBs": 5}
     assert s["theme"] == "mauve"
     assert s["hfTokenSet"] is False
     assert "hfToken" not in s
@@ -121,7 +122,8 @@ def test_settings_put_round_trips_v2_fields(client):
     body = r.json()
     assert body["verifyChecksums"] is False
     assert body["bandwidthCapMBs"] == 40
-    assert body["quietHours"] == {"enabled": True, "start": "23:00", "end": "07:30"}
+    assert body["quietHours"] == {"enabled": True, "start": "23:00", "end": "07:30",
+                                  "limitMBs": 5}
     assert body["theme"] == "graphite"
 
     s = client.get("/api/status").json()["settings"]
