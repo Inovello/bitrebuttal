@@ -1,0 +1,51 @@
+name: release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: windows-latest
+            artifact: LongRebuttal-windows-x64.exe
+          - os: macos-latest
+            artifact: LongRebuttal-macos-arm64
+          - os: macos-13
+            artifact: LongRebuttal-macos-x64
+          - os: ubuntu-22.04
+            artifact: LongRebuttal-linux-x64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install build dependencies
+        run: pip install . pyinstaller
+
+      - name: Build with PyInstaller
+        run: pyinstaller --clean --noconfirm longrebuttal.spec
+
+      - name: Rename artifact (Windows)
+        if: runner.os == 'Windows'
+        shell: bash
+        run: mv dist/LongRebuttal.exe "dist/${{ matrix.artifact }}"
+
+      - name: Rename artifact (macOS / Linux)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: mv dist/LongRebuttal "dist/${{ matrix.artifact }}"
+
+      - name: Upload to release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/${{ matrix.artifact }}

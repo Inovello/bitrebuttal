@@ -1,0 +1,40 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install aria2 (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y aria2
+
+      - name: Install aria2 (Windows)
+        if: runner.os == 'Windows'
+        run: choco install aria2 -y
+
+      - name: Install aria2 (macOS)
+        if: runner.os == 'macOS'
+        run: brew install aria2
+
+      - name: Install dependencies
+        run: pip install -e . pytest pyflakes
+
+      - name: Run tests
+        run: python -m pytest tests -q
+
+      - name: Lint
+        run: python -m pyflakes longrebuttal

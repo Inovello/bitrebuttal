@@ -239,6 +239,8 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: Optional[List[str]] = None) -> int:
+    if argv is None and len(sys.argv) == 1 and getattr(sys, "frozen", False):
+        argv = ["serve"]  # double-clicked binary -> serve + open browser
     args = build_parser().parse_args(argv)
     try:
         return int(args.func(args) or 0)

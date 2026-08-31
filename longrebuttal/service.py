@@ -43,7 +43,10 @@ def _python() -> str:
 
 
 def _launch_cmd(port: int = DEFAULT_PORT, headless: bool = True) -> List[str]:
-    cmd = [_python(), "-m", "longrebuttal", "serve"]
+    if getattr(sys, "frozen", False):
+        cmd = [sys.executable, "serve"]
+    else:
+        cmd = [_python(), "-m", "longrebuttal", "serve"]
     if headless:
         cmd.append("--headless")
     if port and port != DEFAULT_PORT:

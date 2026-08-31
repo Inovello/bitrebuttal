@@ -20,6 +20,18 @@ Three layers, each catching what the one below it misses. The outermost layer is
 
 ## Install
 
+### Option 1 - download the app
+
+Grab the binary for your OS from the [GitHub releases page](https://github.com/). The binary is a single file, no installer:
+
+- **Windows:** run `LongRebuttal-windows-x64.exe`. Double-clicking it serves the UI and opens the browser.
+- **macOS:** `chmod +x` the binary. On first run, right-click the app and choose **Open** (or run `xattr -d com.apple.quarantine <file>`) — the binary is unsigned, so Gatekeeper asks the first time.
+- **Linux:** `chmod +x` the binary and run it.
+
+On every platform you still need `aria2c` on your PATH: `winget install aria2` (Windows), `brew install aria2` (macOS), or `sudo apt install aria2` (Linux).
+
+### Option 2 - install the CLI (pip)
+
 Requirements:
 
 - Python 3.10+
@@ -32,6 +44,8 @@ Then from a clone of this repository:
 ```
 pip install .
 ```
+
+Every binary is also the full CLI: `LongRebuttal-windows-x64.exe add <url>`, `LongRebuttal-linux-x64 status`, and so on.
 
 ## Usage
 
