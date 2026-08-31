@@ -31,6 +31,21 @@ def run(port: int = 7451) -> int:
     from .engine import Engine
     from .server import create_app
 
+    # Single-instance guard: if a Bit Rebuttal server already answers on this
+    # port, attach a window to it instead of starting a second engine — two
+    # engines sharing one state file clobber each other's job records.
+    try:
+        probe = httpx.get(f"http://127.0.0.1:{port}/api/status",
+                          timeout=1.5, trust_env=False)
+        already_running = probe.status_code == 200 and "backend" in probe.json()
+    except Exception:
+        already_running = False
+    if already_running:
+        webview.create_window("Bit Rebuttal", f"http://127.0.0.1:{port}",
+                              width=1440, height=920, min_size=(1200, 760))
+        webview.start()               # window onto the existing instance
+        return 0
+
     engine = Engine()
     engine.start(port=port)
 
