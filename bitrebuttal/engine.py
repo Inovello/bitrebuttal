@@ -23,20 +23,24 @@ from __future__ import annotations
 import logging
 import os
 import queue
+import re
 import shutil
 import statistics
+import subprocess
 import sys
 import threading
 import time
 from collections import deque
 from pathlib import Path
-from typing import Any, Deque, Dict, List, Optional, Tuple
+from typing import Any, Callable, Deque, Dict, List, Optional, Tuple
+from urllib.parse import urlparse
 
 from . import __version__
 from .aria2 import Aria2Error, Aria2Process, spawn
-from .resolve import Manifest, resolve
-from .state import (COMPLETE_MARKER, FileEntry, Job, Store, new_job_id, normalize_settings)
-from .verify import control_file, verify_file, write_completion_marker
+from .resolve import Manifest, resolve, set_hf_token
+from .state import (COMPLETE_MARKER, QUIET_HOURS_LIMIT_MBS, FileEntry, Job, Store, new_job_id,
+                    normalize_settings, push_recent)
+from .verify import (control_file, is_marked_complete, verify_file, write_completion_marker)
 
 LOG = logging.getLogger("bitrebuttal.engine")
 
@@ -48,6 +52,8 @@ RELAUNCH_BACKOFF_S = 15.0
 MAX_FILE_ATTEMPTS = 8                # aria2 errors on one file before the job FAILS
 DISK_HEADROOM = 1.05                 # total size + 5% (ARCHITECTURE 4)
 SENSITIVITY_MULT = {"Low": 0.5, "Normal": 1.0, "High": 2.0}
+CONNECTIONS_REFRESH_S = 2.0          # getServers cadence (display only)
+CONNECTIONS_RPC_TIMEOUT = 4.0        # never let a cosmetic call stall the supervisor
 
 STATUS_KEYS = ["gid", "status", "completedLength", "totalLength", "errorCode", "errorMessage"]
 
@@ -140,6 +146,92 @@ def disk_free(path: os.PathLike | str) -> int:
         return 0
 
 
+def finished_label(ts: float) -> str:
+    return time.strftime("%b %d · %H:%M", time.localtime(ts))
+
+
+def is_same_local_day(ts: Optional[float], now: Optional[float] = None) -> bool:
+    if not ts:
+        return False
+    ref = time.time() if now is None else now
+    return time.localtime(ts)[:3] == time.localtime(ref)[:3]
+
+
+def after_queue_bytes(free_bytes: int, remaining_bytes: int) -> int:
+    """Free space once everything still queued has landed. Never negative."""
+    return max(0, int(free_bytes) - max(0, int(remaining_bytes)))
+
+
+# -- quiet hours / bandwidth ------------------------------------------------
+
+
+def hhmm_to_minutes(value: str) -> int:
+    m = re.match(r"^\s*(\d{1,2}):(\d{2})\s*$", str(value or ""))
+    if not m:
+        return 0
+    return (int(m.group(1)) % 24) * 60 + min(59, int(m.group(2)))
+
+
+def in_quiet_window(minute_of_day: int, start: str, end: str) -> bool:
+    """True inside [start, end). Handles windows that cross midnight (23:00 -> 07:30)."""
+    s, e = hhmm_to_minutes(start), hhmm_to_minutes(end)
+    if s == e:
+        return False                              # zero-length window: never quiet
+    m = int(minute_of_day) % (24 * 60)
+    if s < e:
+        return s <= m < e
+    return m >= s or m < e                        # crosses midnight
+
+
+def quiet_hours_active(settings: Dict[str, Any], now: Optional[float] = None) -> bool:
+    q = settings.get("quietHours") or {}
+    if not q.get("enabled"):
+        return False
+    lt = time.localtime(time.time() if now is None else now)
+    return in_quiet_window(lt.tm_hour * 60 + lt.tm_min, q.get("start", "23:00"),
+                           q.get("end", "07:30"))
+
+
+def effective_limit_mbs(settings: Dict[str, Any], now: Optional[float] = None) -> int:
+    """MB/s cap to apply right now: 5 inside quiet hours, else the configured cap (0 = off)."""
+    if quiet_hours_active(settings, now):
+        return QUIET_HOURS_LIMIT_MBS
+    try:
+        return max(0, int(settings.get("bandwidthCapMBs", 0) or 0))
+    except (TypeError, ValueError):
+        return 0
+
+
+def limit_option(mbs: int) -> str:
+    """aria2 ``max-overall-download-limit`` value: "0" = unlimited, else "<n>M"."""
+    return "0" if not mbs else f"{int(mbs)}M"
+
+
+def aria2c_version(aria2_path: str = "aria2c") -> str:
+    """`aria2c --version` -> "1.37.0". Empty string when aria2c is not installed."""
+    exe = shutil.which(aria2_path)
+    if not exe:
+        return ""
+    kwargs: Dict[str, Any] = {}
+    if sys.platform == "win32":
+        kwargs["creationflags"] = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+    try:
+        out = subprocess.run([exe, "--version"], capture_output=True, text=True, timeout=10,
+                             **kwargs).stdout
+    except (OSError, subprocess.SubprocessError):
+        return ""
+    m = re.search(r"aria2\s+version\s+([0-9][\w.\-]*)", out or "", re.I)
+    return m.group(1) if m else ""
+
+
+def host_of(uri: str) -> str:
+    try:
+        netloc = urlparse(uri).netloc
+    except ValueError:
+        return uri
+    return netloc.split("@")[-1].split(":")[0] or uri
+
+
 # ---------------------------------------------------------------- engine
 
 
@@ -149,6 +241,7 @@ class Engine:
                  aria2_path: str = "aria2c", stall_polls: int = STALL_POLLS):
         self.store = Store(data_dir)
         self.settings = self.store.load_settings()
+        set_hf_token(self.settings.get("hfToken"))
         self.poll_interval = float(poll_interval)
         self.relaunch_backoff = float(relaunch_backoff)
         self.stall_polls = int(stall_polls)
@@ -174,6 +267,12 @@ class Engine:
         self._port: Optional[int] = None
         self._dirty = False
         self._service_cache: Tuple[float, bool] = (0.0, False)
+
+        # v2
+        self.folder_picker: Optional[Callable[[], Optional[str]]] = None  # set by create_app
+        self._applied_limit: Optional[str] = None      # last max-overall-download-limit pushed
+        self._connections: List[Dict[str, Any]] = []   # aria2 getServers, display only (5.1)
+        self._aria2c_version: Optional[str] = None
 
     # ------------------------------------------------------------ lifecycle
     def preflight(self) -> str:
@@ -242,11 +341,23 @@ class Engine:
 
     # ------------------------------------------------------------ public API
     def resolve_payload(self, url: str) -> Dict[str, Any]:
-        return resolve(url).payload()
+        payload = resolve(url).payload()
+        self._push_recent(url)
+        return payload
+
+    def _push_recent(self, url: str) -> None:
+        """Remember a successfully-resolved source input (newest first, capped, distinct)."""
+        with self.lock:
+            updated = push_recent(self.store.recents, url)
+            if updated == self.store.recents:
+                return
+            self.store.recents = updated
+        self.save()
 
     def add_job(self, url: str, files: Optional[List[str]] = None,
                 dest: Optional[str] = None) -> Dict[str, Any]:
         manifest: Manifest = resolve(url)          # never trust client-provided sizes
+        self._push_recent(url)
         selected = list(manifest.files)
         if files:
             wanted = set(files)
@@ -282,7 +393,7 @@ class Engine:
             dest=str(base),
             files=[FileEntry(name=f.name, url=f.url, size=f.size, sha256=f.sha256)
                    for f in selected],
-            subtitle=self._subtitle(selected),
+            subtitle=self._subtitle(selected, self._verify_checksums()),
             repo=manifest.repo,
             revision=manifest.revision,
             status="DOWNLOADING",
@@ -305,7 +416,14 @@ class Engine:
 
         Covers re-adding a job over a previous download and aria2's refusal to
         overwrite an existing complete file (--allow-overwrite=false).
+
+        A completion marker left by a previous run - under either the current or the
+        pre-rename ``.longrebuttal-complete`` name - is noted but never trusted in
+        place of verification: bytes get re-checked, always.
         """
+        if is_marked_complete(job.dest):
+            self.event(job, "info",
+                       f"Previous completion record found in {job.dest} - re-verifying anyway")
         for f in job.files:
             if f.state in ("done", "corrupt"):
                 continue                      # never re-hash what is already settled
@@ -321,12 +439,17 @@ class Engine:
             self.event(job, "info", f"{f.name} already present ({human_bytes(size)}) - verifying")
             self._verify_q.put((job.id, f.name))
 
+    def _verify_checksums(self) -> bool:
+        return bool(self.settings.get("verifyChecksums", True))
+
     @staticmethod
-    def _subtitle(files) -> str:
+    def _subtitle(files, verify_checksums: bool = True) -> str:
         n = len(files)
-        hashed = sum(1 for f in files if f.sha256)
+        hashed = sum(1 for f in files if f.sha256) if verify_checksums else 0
         kinds = {Path(f.name).suffix.lstrip(".").lower() for f in files if Path(f.name).suffix}
-        if n and hashed == n:
+        if not verify_checksums:
+            tail = "size-only verification (checksums off)"
+        elif n and hashed == n:
             tail = "sha256 available"
         elif hashed:
             tail = f"sha256 for {hashed}/{n}"
@@ -362,6 +485,7 @@ class Engine:
                     "deleted - remove the file(s) manually, then create a new job.")
             job.paused = False
             job.error = None
+            job.completed_at = None
             job.status = "RECOVERING"
             for f in job.files:
                 if f.state not in ("done", "verifying"):
@@ -395,7 +519,120 @@ class Engine:
         merged = dict(self.settings)
         merged.update({k: v for k, v in (raw or {}).items() if v is not None})
         self.settings = self.store.save_settings(normalize_settings(merged))
+        set_hf_token(self.settings.get("hfToken"))
+        self._apply_bandwidth(force=True)      # bandwidthCapMBs takes effect immediately
         return self.settings_payload()
+
+    # -- v2 job actions -------------------------------------------
+    def pause_all(self) -> Dict[str, Any]:
+        """Clean stop for every job that can be paused. Never aria2's RPC pause."""
+        with self.lock:
+            targets = [j for j in self.jobs.values()
+                       if not j.paused and j.status not in ("COMPLETE", "FAILED")]
+            for job in targets:
+                job.paused = True
+                job.status = "PAUSED"
+                self.event(job, "warn", "Paused - stopping aria2c cleanly (control files flushed)")
+            if targets:
+                self._requeue = True
+        self.save()
+        return {"ok": True}
+
+    def resume_all(self) -> Dict[str, Any]:
+        with self.lock:
+            resumed = 0
+            for job in self.jobs.values():
+                if job.status == "COMPLETE" or not job.paused:
+                    continue
+                if any(f.state == "corrupt" for f in job.files):
+                    continue          # needs the loud per-job error, not a silent skip
+                job.paused = False
+                job.error = None
+                job.completed_at = None
+                job.status = "RECOVERING"
+                for f in job.files:
+                    if f.state not in ("done", "verifying"):
+                        f.state = "queued"
+                        f.attempts = 0
+                        f.error = None
+                self.event(job, "info", "Resumed by user")
+                resumed += 1
+            if resumed:
+                self._requeue = True
+                self._next_launch_at = 0.0
+        self.save()
+        return {"ok": True}
+
+    def clear_finished(self) -> Dict[str, Any]:
+        """Archive COMPLETE jobs off the dashboard. Files and library entries untouched."""
+        with self.lock:
+            for job in self.jobs.values():
+                if job.status == "COMPLETE" and not job.archived:
+                    job.archived = True
+        self.save()
+        return {"ok": True}
+
+    def reverify_job(self, job_id: str) -> Dict[str, Any]:
+        """Re-run the verification pass on a finished job. Corruption fails it loudly."""
+        with self.lock:
+            job = self._job(job_id)
+            if job.status not in ("COMPLETE", "FAILED"):
+                raise EngineError("Re-verify is only available for a COMPLETE or FAILED job.")
+            targets: List[str] = []
+            missing: List[str] = []
+            for f in job.files:
+                f.verified = False
+                f.hashed = False
+                f.verify_read = 0
+                if not (Path(job.dest) / f.name).exists():
+                    f.state = "corrupt"
+                    f.error = f"{f.name}: file is missing from {job.dest}"
+                    missing.append(f.name)
+                    continue
+                f.state = "verifying"
+                f.error = None
+                targets.append(f.name)
+            job.error = None
+            job.bytes_lost = 0
+            job.completed_at = None
+            job.status = "VERIFYING"
+            self.event(job, "info", f"Re-verifying {len(targets)} file(s) on disk")
+            for name in missing:
+                self.event(job, "err", f"{name} is missing from the destination")
+            if not targets:
+                self._fail_job(job, "Re-verify found no files on disk to check.")
+        for name in targets:
+            self._verify_q.put((job_id, name))
+        self.save()
+        return {"ok": True}
+
+    def open_folder(self, job_id: str) -> Dict[str, Any]:
+        with self.lock:
+            dest = self._job(job_id).dest
+        path = Path(dest)
+        if not path.is_dir():
+            raise EngineError(f"Destination folder does not exist: {dest}")
+        try:
+            if sys.platform == "win32":
+                os.startfile(str(path))                       # noqa: S606 (Windows only)
+            elif sys.platform == "darwin":
+                subprocess.Popen(["open", str(path)])
+            else:
+                subprocess.Popen(["xdg-open", str(path)])
+        except (OSError, subprocess.SubprocessError) as exc:
+            raise EngineError(f"Could not open {dest}: {exc}") from exc
+        return {"ok": True}
+
+    def browse_dest(self) -> Dict[str, Any]:
+        """Native folder dialog - only available when the GUI shell wired a picker in."""
+        picker = self.folder_picker
+        if picker is None:
+            raise EngineError("Folder browsing needs the desktop shell - type the path instead.")
+        try:
+            chosen = picker()
+        except Exception as exc:                              # a broken shell must not 500
+            raise EngineError(f"Folder dialog failed: {exc}") from exc
+        return {"path": str(chosen) if chosen else None}
 
     def _job(self, job_id: str) -> Job:
         job = self.jobs.get(job_id)
@@ -406,6 +643,9 @@ class Engine:
     # ------------------------------------------------------------ payloads
     def settings_payload(self) -> Dict[str, Any]:
         s = dict(self.settings)
+        token = s.pop("hfToken", "")           # WRITE-ONLY: never echoed, anywhere
+        s["hfTokenSet"] = bool(str(token or "").strip())
+        s["quietHours"] = dict(s.get("quietHours") or {})
         s["serviceInstalled"] = self._service_installed()
         return s
 
@@ -425,23 +665,78 @@ class Engine:
     def status_payload(self) -> Dict[str, Any]:
         """The complete GET /api/status body - server.py is a thin wrapper over this."""
         with self.lock:
-            jobs = [self.job_payload(self.jobs[j]) for j in self._order if j in self.jobs]
+            ordered = [self.jobs[j] for j in self._order if j in self.jobs]
+            jobs = [self.job_payload(j) for j in ordered]
+            remaining = self._remaining_bytes(ordered)
+            library = self._library_payload(ordered)
+            completed_today = sum(1 for j in ordered
+                                  if j.status == "COMPLETE" and is_same_local_day(j.completed_at))
+            recents = list(self.store.recents)
         dest = self.settings["destination"]
+        free = disk_free(dest)
         return {
             "backend": {
                 "healthy": True,
                 "label": "supervisor online",
                 "version": __version__,
                 "uptime": uptime_label(time.time() - self._started_at),
+                "aria2cVersion": self.aria2c_version(),
+                "gui": self.folder_picker is not None,
             },
             "disk": {
                 "path": dest,
-                "freeBytes": disk_free(dest),
+                "freeBytes": free,
                 "volumeLabel": volume_label(dest),
+                "afterQueueBytes": after_queue_bytes(free, remaining),
             },
             "settings": self.settings_payload(),
+            "recents": recents,
+            "completedToday": completed_today,
+            "connections": list(self._connections),
+            "library": library,
             "jobs": jobs,
         }
+
+    def aria2c_version(self) -> str:
+        """Cached: /api/status polls at 1 Hz and this shells out to aria2c."""
+        if self._aria2c_version is None:
+            self._aria2c_version = aria2c_version(self.aria2_path)
+        return self._aria2c_version
+
+    @staticmethod
+    def _remaining_bytes(jobs: List[Job]) -> int:
+        """Bytes still to download across everything that is not finished."""
+        total = 0
+        for job in jobs:
+            if job.status in ("COMPLETE", "FAILED"):
+                continue
+            total += max(0, job.total_bytes - job.done_bytes)
+        return total
+
+    @staticmethod
+    def _integrity_label(job: Job) -> str:
+        n = len(job.files)
+        corrupt = sum(1 for f in job.files if f.state == "corrupt")
+        if corrupt:
+            return f"{corrupt} corrupt"
+        hashed = sum(1 for f in job.files if f.hashed)
+        return f"sha256 {hashed}/{n}" if hashed else "size-only"
+
+    def _library_payload(self, jobs: List[Job]) -> List[Dict[str, Any]]:
+        """COMPLETE and FAILED jobs, newest first, archived or not."""
+        out: List[Dict[str, Any]] = []
+        for job in jobs:
+            if job.status not in ("COMPLETE", "FAILED"):
+                continue
+            out.append({
+                "jobId": job.id,
+                "name": job.name,
+                "path": job.dest,
+                "sizeBytes": job.total_bytes,
+                "integrity": self._integrity_label(job),
+                "finishedLabel": finished_label(job.completed_at or job.created_at),
+            })
+        return out
 
     def job_payload(self, job: Job) -> Dict[str, Any]:
         total = job.total_bytes
@@ -471,6 +766,7 @@ class Engine:
             "startedLabel": started_label(job.created_at),
             "elapsedLabel": elapsed_label(end - job.created_at),
             "avgSpeedBps": avg,
+            "archived": bool(job.archived),
             "files": [self._file_payload(f) for f in job.files],
             "log": list(job.log),
         }
@@ -495,9 +791,64 @@ class Engine:
             return 0.0
         return self._speed_samples[-1][1]
 
+    # ------------------------------------------------------------ bandwidth / quiet hours
+    def _apply_bandwidth(self, force: bool = False) -> None:
+        """Push ``max-overall-download-limit`` to the running child when it should change.
+
+        Called on every watchdog poll (so quiet hours start/stop on time) and on
+        every settings write (so a cap takes effect immediately, per the contract).
+        """
+        want = limit_option(effective_limit_mbs(self.settings))
+        proc = self._proc
+        if proc is None or not proc.alive():
+            self._applied_limit = None
+            return
+        if not force and want == self._applied_limit:
+            return
+        try:
+            proc.rpc.change_global_option({"max-overall-download-limit": want})
+        except Aria2Error as exc:
+            LOG.warning("could not set max-overall-download-limit=%s: %s", want, exc)
+            return
+        if want != self._applied_limit:
+            quiet = quiet_hours_active(self.settings)
+            with self.lock:
+                for job in self._jobs_with_work():
+                    self.event(job, "info",
+                               ("Quiet hours - throttled to " if quiet else
+                                "Bandwidth cap set to ") +
+                               (f"{effective_limit_mbs(self.settings)} MB/s" if want != "0"
+                                else "unlimited"))
+        self._applied_limit = want
+
+    def _refresh_connections(self) -> None:
+        """aria2 getServers for the ACTIVE download. Display only - errors swallow to []."""
+        proc = self._proc
+        if proc is None or not proc.alive():
+            self._connections = []
+            return
+        rows: List[Dict[str, Any]] = []
+        try:
+            # Short timeout: this runs on the supervisor thread and must never delay
+            # a watchdog poll. It is cosmetic - an empty list is a fine answer.
+            active = proc.rpc.tell_active(["gid"], timeout=CONNECTIONS_RPC_TIMEOUT)
+            gid = (active or [{}])[0].get("gid")
+            entries = proc.rpc.get_servers(gid, timeout=CONNECTIONS_RPC_TIMEOUT) if gid else []
+            for entry in entries or []:
+                for srv in entry.get("servers") or []:
+                    rows.append({
+                        "id": f"c-{len(rows) + 1:02d}",
+                        "speedBps": int(srv.get("downloadSpeed", 0) or 0),
+                        "host": host_of(srv.get("currentUri") or srv.get("uri") or ""),
+                    })
+        except Exception:                       # never a health signal, never fatal (5.1)
+            rows = []
+        self._connections = rows
+
     # ------------------------------------------------------------ supervisor
     def _supervise(self) -> None:
         last_poll = 0.0
+        last_conn = 0.0
         last_tick = time.time()
         while not self._stop_evt.is_set():
             try:
@@ -506,6 +857,10 @@ class Engine:
 
                 if self._proc is not None and not self._proc.alive():
                     self._on_aria_exit()
+
+                if now - last_conn >= CONNECTIONS_REFRESH_S:
+                    last_conn = now
+                    self._refresh_connections()
 
                 with self.lock:
                     self._accumulate_active(dt)
@@ -568,9 +923,10 @@ class Engine:
     # -- launching ------------------------------------------------
     def _launch(self, work: List[Job]) -> None:
         log_path = self.store.dir / "aria2.log"
+        limit = limit_option(effective_limit_mbs(self.settings))
         try:
             proc = spawn(log_path=log_path, connections=int(self.settings["connections"]),
-                         aria2_path=self.aria2_path)
+                         aria2_path=self.aria2_path, download_limit=limit)
         except Aria2Error as exc:
             LOG.error("aria2c launch failed: %s", exc)
             with self.lock:
@@ -587,6 +943,7 @@ class Engine:
         self._speed_samples.clear()
         self._gids.clear()
         self._keys.clear()
+        self._applied_limit = limit          # already on the command line
         with self.lock:
             for job in work:
                 n = self._enqueue_files(job)
@@ -632,6 +989,8 @@ class Engine:
         self._keys.clear()
         self._speed_samples.clear()
         self._stalls = 0
+        self._applied_limit = None
+        self._connections = []
 
     def _on_aria_exit(self) -> None:
         proc, self._proc = self._proc, None
@@ -642,6 +1001,8 @@ class Engine:
         self._keys.clear()
         self._speed_samples.clear()
         self._stalls = 0
+        self._applied_limit = None
+        self._connections = []
         with self.lock:
             work = self._jobs_with_work()
             for job in work:
@@ -658,6 +1019,9 @@ class Engine:
         proc = self._proc
         if proc is None or not proc.alive():
             return
+        # Quiet hours / bandwidth cap are re-evaluated on every poll so the window
+        # opens and closes on its own without a relaunch.
+        self._apply_bandwidth()
         try:
             stat = proc.rpc.get_global_stat()
         except Aria2Error as exc:
@@ -778,6 +1142,7 @@ class Engine:
     def _fail_job(self, job: Job, message: str) -> None:
         job.error = message
         job.status = "FAILED"
+        job.completed_at = job.completed_at or time.time()   # freezes elapsed + Library label
         self.event(job, "err", f"Job FAILED - {message}")
         self._dirty = True
         # Drop this job's remaining files out of the shared aria2 queue cleanly.
@@ -793,6 +1158,7 @@ class Engine:
         if job.error or any(f.state == "corrupt" for f in job.files):
             if job.status != "FAILED":
                 job.status = "FAILED"
+                job.completed_at = job.completed_at or time.time()
                 self._dirty = True
             return
         if job.paused:
@@ -814,7 +1180,7 @@ class Engine:
         job.completed_at = time.time()
         results = [{"name": f.name, "bytes": f.size, "sha256": f.sha256,
                     "verified": bool(f.verified),
-                    "hashChecked": bool(f.sha256)} for f in job.files]
+                    "hashChecked": bool(f.hashed)} for f in job.files]
         try:
             write_completion_marker(job.dest, job.id, job.name, results,
                                     extra={"url": job.url, "repo": job.repo,
@@ -823,10 +1189,13 @@ class Engine:
                                            "totalBytes": job.total_bytes})
         except OSError as exc:
             LOG.error("could not write %s: %s", COMPLETE_MARKER, exc)
-        hashed = sum(1 for f in job.files if f.sha256)
+        n = len(job.files)
+        hashed = sum(1 for f in job.files if f.hashed)
+        checked = (f"{hashed}/{n} files SHA256 verified" if hashed
+                   else f"{n} file{'s' if n != 1 else ''} size-verified (no checksum run)")
         self.event(job, "ok",
-                   f"Job complete - {human_bytes(job.total_bytes)}, {hashed}/{len(job.files)} "
-                   f"files SHA256 verified, {job.recoveries} recoveries, 0 bytes lost")
+                   f"Job complete - {human_bytes(job.total_bytes)}, {checked}, "
+                   f"{job.recoveries} recoveries, 0 bytes lost")
         self._dirty = True
 
     # -- verification worker ---------------------------------------
@@ -848,7 +1217,9 @@ class Engine:
             if job is None or f is None or f.state not in ("verifying",):
                 return
             path = Path(job.dest) / f.name
-            expected_size, expected_sha = f.size, f.sha256
+            expected_size = f.size
+            # verifyChecksums=false: hashing is skipped, the size check stays mandatory.
+            expected_sha = f.sha256 if self._verify_checksums() else None
 
         # Wait for aria2 to drop the .aria2 control file (ARCHITECTURE 5).
         deadline = time.time() + 60
@@ -888,6 +1259,7 @@ class Engine:
             if result.ok:
                 f.state = "done"
                 f.verified = True
+                f.hashed = bool(result.hashed)
                 f.completed = result.size
                 f.size = f.size or result.size
                 self.event(job, "ok", f"{name} SHA256 verified" if result.hashed
@@ -895,6 +1267,7 @@ class Engine:
             else:
                 f.state = "corrupt"
                 f.verified = False
+                f.hashed = bool(result.hashed)
                 f.error = result.error
                 job.bytes_lost += f.size or result.size
                 self.event(job, "err", result.error or f"{name} failed verification")

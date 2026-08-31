@@ -46,11 +46,14 @@ class Aria2Rpc:
         self._ids = itertools.count(1)
         self._client = httpx.Client(timeout=timeout, trust_env=False)
 
-    def call(self, method: str, *params: Any) -> Any:
+    def call(self, method: str, *params: Any, timeout: Optional[float] = None) -> Any:
         body = {"jsonrpc": "2.0", "id": str(next(self._ids)),
                 "method": method, "params": [self._token, *params]}
         try:
-            resp = self._client.post(self.url, json=body)
+            kwargs: Dict[str, Any] = {"json": body}
+            if timeout is not None:
+                kwargs["timeout"] = timeout      # keep display-only calls off the hot path
+            resp = self._client.post(self.url, **kwargs)
         except httpx.HTTPError as exc:
             raise Aria2Error(f"RPC transport failure: {exc}") from exc
         if resp.status_code != 200:
@@ -69,8 +72,11 @@ class Aria2Rpc:
         return self.call("aria2.tellStatus", gid, list(keys)) if keys else \
             self.call("aria2.tellStatus", gid)
 
-    def tell_active(self, keys: Optional[Sequence[str]] = None) -> List[Dict[str, Any]]:
-        return self.call("aria2.tellActive", list(keys)) if keys else self.call("aria2.tellActive")
+    def tell_active(self, keys: Optional[Sequence[str]] = None,
+                    timeout: Optional[float] = None) -> List[Dict[str, Any]]:
+        if keys:
+            return self.call("aria2.tellActive", list(keys), timeout=timeout)
+        return self.call("aria2.tellActive", timeout=timeout)
 
     def tell_stopped(self, offset: int = 0, num: int = 100,
                      keys: Optional[Sequence[str]] = None) -> List[Dict[str, Any]]:
@@ -80,6 +86,14 @@ class Aria2Rpc:
 
     def get_global_stat(self) -> Dict[str, Any]:
         return self.call("aria2.getGlobalStat")
+
+    def get_servers(self, gid: str, timeout: Optional[float] = None) -> List[Dict[str, Any]]:
+        """Per-server rates for one download. DISPLAY ONLY - never a health signal (5.1)."""
+        return self.call("aria2.getServers", gid, timeout=timeout)
+
+    def change_global_option(self, options: Dict[str, str]) -> Any:
+        """Live global option change, e.g. ``max-overall-download-limit``."""
+        return self.call("aria2.changeGlobalOption", dict(options))
 
     def get_version(self) -> Dict[str, Any]:
         return self.call("aria2.getVersion")
@@ -149,7 +163,8 @@ def ipv6_available() -> bool:
 
 
 def build_argv(*, port: int, secret: str, log_path: Path, connections: int = 4,
-               aria2_path: str = "aria2c", stop_with_process: Optional[int] = None) -> List[str]:
+               aria2_path: str = "aria2c", stop_with_process: Optional[int] = None,
+               download_limit: str = "0") -> List[str]:
     """The annotated invocation from field notes 4, with the cross-platform deltas.
 
     ``--dir``/``--input-file`` are replaced by per-download ``dir``/``out`` RPC options.
@@ -171,6 +186,8 @@ def build_argv(*, port: int, secret: str, log_path: Path, connections: int = 4,
         "--log-level=notice", f"--log={log_path}",
         "--enable-rpc=true", "--rpc-listen-all=false",
         f"--rpc-listen-port={port}", f"--rpc-secret={secret}",
+        # Bandwidth cap / quiet hours. "0" = unlimited; changed live via changeGlobalOption.
+        f"--max-overall-download-limit={download_limit or '0'}",
         "--no-conf=true",
     ]
     if not ipv6_available():
@@ -273,11 +290,12 @@ class Aria2Process:
 
 
 def spawn(*, log_path: Path, connections: int = 4, aria2_path: str = "aria2c",
-          ready_timeout: float = 20.0) -> Aria2Process:
+          ready_timeout: float = 20.0, download_limit: str = "0") -> Aria2Process:
     """Spawn aria2c on a random free port with a random secret and wait for RPC."""
     port, secret = free_port(), new_secret()
     argv = build_argv(port=port, secret=secret, log_path=log_path, connections=connections,
-                      aria2_path=aria2_path, stop_with_process=os.getpid())
+                      aria2_path=aria2_path, stop_with_process=os.getpid(),
+                      download_limit=download_limit)
     proc = Aria2Process(argv, port, secret)
     proc.start()
     if not proc.wait_ready(ready_timeout):

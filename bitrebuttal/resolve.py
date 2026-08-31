@@ -125,9 +125,24 @@ def parse_input(raw: str) -> Tuple[str, Dict[str, str]]:
 # ---------------------------------------------------------------- HF
 
 
+_HF_TOKEN: Optional[str] = None
+
+
+def set_hf_token(token: Optional[str]) -> None:
+    """Install the token from settings.json. NEVER passed to aria2c: a global header
+    would leak it to the CDN redirect hosts (API contract, v2 settings)."""
+    global _HF_TOKEN
+    _HF_TOKEN = (str(token or "").strip()) or None
+
+
+def hf_token() -> Optional[str]:
+    return _HF_TOKEN or os.environ.get("HF_TOKEN") or \
+        os.environ.get("HUGGING_FACE_HUB_TOKEN") or None
+
+
 def _hf_headers() -> Dict[str, str]:
     h = {"User-Agent": "bitrebuttal/0.1"}
-    tok = os.environ.get("HF_TOKEN") or os.environ.get("HUGGING_FACE_HUB_TOKEN")
+    tok = hf_token()
     if tok:
         h["Authorization"] = f"Bearer {tok}"
     return h
@@ -139,7 +154,8 @@ def _hf_error(resp: httpx.Response, repo: str) -> ResolveError:
                             "(check spelling, or the revision).")
     if resp.status_code in (401, 403):
         return ResolveError(f"Repository {repo} is gated or private - access denied. "
-                            "Accept the licence on huggingface.co and set HF_TOKEN.")
+                            "Accept the licence on huggingface.co, then add your HuggingFace "
+                            "token in Settings (or set HF_TOKEN).")
     return ResolveError(f"huggingface.co returned HTTP {resp.status_code} for {repo}.")
 
 

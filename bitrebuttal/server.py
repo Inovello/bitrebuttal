@@ -3,8 +3,12 @@
 The engine (``bitrebuttal/engine.py``) owns all the logic; this module is only
 HTTP shape. Two public callables:
 
-    create_app(engine)  -> FastAPI   (no side effects; tests use an unstarted Engine)
+    create_app(engine, folder_picker=None) -> FastAPI
+                                     (no side effects; tests use an unstarted Engine)
     run(port, headless) -> int       (CLI entry: Engine().start(port), uvicorn on 127.0.0.1)
+
+``folder_picker`` is supplied by the native shell: a callable returning the chosen
+path or None. ``backend.gui`` is true iff one is wired in.
 """
 
 from __future__ import annotations
@@ -12,7 +16,7 @@ from __future__ import annotations
 import threading
 import webbrowser
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
@@ -61,9 +65,11 @@ def _service_response(result: Dict[str, Any]) -> JSONResponse:
     return JSONResponse(status_code=200, content=result)
 
 
-def create_app(engine: Engine) -> FastAPI:
+def create_app(engine: Engine,
+               folder_picker: Optional[Callable[[], Optional[str]]] = None) -> FastAPI:
     app = FastAPI()
     port = int(getattr(engine, "_port", 0) or DEFAULT_PORT)
+    engine.folder_picker = folder_picker      # drives backend.gui + /api/browse-dest
 
     @app.exception_handler(ResolveError)
     async def _on_resolve_error(request: Request, exc: ResolveError) -> JSONResponse:
@@ -96,6 +102,20 @@ def create_app(engine: Engine) -> FastAPI:
     async def api_add_job(body: JobBody) -> Dict[str, Any]:
         return engine.add_job(body.url, body.files, body.dest)
 
+    # Literal /api/jobs/<verb> routes are registered before the /{job_id}/ ones so a
+    # job can never be named "pause-all".
+    @app.post("/api/jobs/pause-all")
+    async def api_pause_all() -> Dict[str, Any]:
+        return engine.pause_all()
+
+    @app.post("/api/jobs/resume-all")
+    async def api_resume_all() -> Dict[str, Any]:
+        return engine.resume_all()
+
+    @app.post("/api/jobs/clear-finished")
+    async def api_clear_finished() -> Dict[str, Any]:
+        return engine.clear_finished()
+
     @app.post("/api/jobs/{job_id}/pause")
     async def api_pause(job_id: str) -> Dict[str, Any]:
         return engine.pause_job(job_id)
@@ -104,6 +124,14 @@ def create_app(engine: Engine) -> FastAPI:
     async def api_resume(job_id: str) -> Dict[str, Any]:
         return engine.resume_job(job_id)
 
+    @app.post("/api/jobs/{job_id}/reverify")
+    async def api_reverify(job_id: str) -> Dict[str, Any]:
+        return engine.reverify_job(job_id)
+
+    @app.post("/api/jobs/{job_id}/open-folder")
+    async def api_open_folder(job_id: str) -> Dict[str, Any]:
+        return engine.open_folder(job_id)
+
     @app.delete("/api/jobs/{job_id}")
     async def api_delete(job_id: str, deleteFiles: str = "false") -> Dict[str, Any]:
         return engine.delete_job(job_id, deleteFiles.strip().lower() == "true")
@@ -111,6 +139,10 @@ def create_app(engine: Engine) -> FastAPI:
     @app.put("/api/settings")
     async def api_settings(body: dict) -> Dict[str, Any]:
         return engine.update_settings(body)
+
+    @app.post("/api/browse-dest")
+    async def api_browse_dest() -> Dict[str, Any]:
+        return engine.browse_dest()
 
     @app.post("/api/service/install")
     async def api_service_install() -> JSONResponse:
@@ -126,12 +158,13 @@ def create_app(engine: Engine) -> FastAPI:
     return app
 
 
-def run(port: int = DEFAULT_PORT, headless: bool = False) -> int:
+def run(port: int = DEFAULT_PORT, headless: bool = False,
+        folder_picker: Optional[Callable[[], Optional[str]]] = None) -> int:
     import uvicorn
 
     engine = Engine()
     engine.start(port=port)
-    app = create_app(engine)
+    app = create_app(engine, folder_picker=folder_picker)
     if not headless:
         threading.Timer(1.0, lambda: webbrowser.open(f"http://127.0.0.1:{port}")).start()
     try:

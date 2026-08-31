@@ -83,6 +83,7 @@ def verify_file(path: os.PathLike | str, expected_size: int = 0,
 # ---------------------------------------------------------------- completion marker
 
 MARKER_NAME = ".bitrebuttal-complete"
+LEGACY_MARKER_NAME = ".longrebuttal-complete"   # pre-rename; read, never written
 
 
 def write_completion_marker(dest: os.PathLike | str, job_id: str, job_name: str,
@@ -106,9 +107,26 @@ def write_completion_marker(dest: os.PathLike | str, job_id: str, job_name: str,
     return path
 
 
+def find_completion_marker(dest: os.PathLike | str) -> Optional[Path]:
+    """The destination's completion marker, accepting the legacy name as equivalent."""
+    for name in (MARKER_NAME, LEGACY_MARKER_NAME):
+        p = Path(dest) / name
+        if p.is_file():
+            return p
+    return None
+
+
+def is_marked_complete(dest: os.PathLike | str) -> bool:
+    """True when a previous run (under either name) marked this destination complete."""
+    return find_completion_marker(dest) is not None
+
+
 def read_completion_marker(dest: os.PathLike | str) -> Optional[Dict[str, Any]]:
+    path = find_completion_marker(dest)
+    if path is None:
+        return None
     try:
-        with open(Path(dest) / MARKER_NAME, "r", encoding="utf-8") as fh:
+        with open(path, "r", encoding="utf-8") as fh:
             return json.load(fh)
     except (OSError, ValueError):
         return None

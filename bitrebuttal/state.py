@@ -8,7 +8,9 @@ Every write is temp-file + fsync + os.replace (atomic on both NTFS and ext4).
 from __future__ import annotations
 
 import json
+import logging
 import os
+import re
 import sys
 import tempfile
 import threading
@@ -20,22 +22,54 @@ from typing import Any, Dict, List, Optional
 
 from . import APP_NAME
 
+LOG = logging.getLogger("bitrebuttal.state")
+
 STATE_VERSION = 1
+
+# The pre-rename name; data dirs and completion markers written by it are still adopted.
+LEGACY_APP_NAME = "longrebuttal"
 
 # ---------------------------------------------------------------- locations
 
 
+def app_data_dir(app_name: str = APP_NAME) -> Path:
+    """%LOCALAPPDATA%\\<app> (Windows), ~/Library/Application Support (macOS), ~/.local/share (Linux)."""
+    if sys.platform == "win32":
+        base = os.environ.get("LOCALAPPDATA") or (Path.home() / "AppData" / "Local")
+        return Path(base) / app_name
+    if sys.platform == "darwin":
+        return Path.home() / "Library" / "Application Support" / app_name
+    return Path.home() / ".local" / "share" / app_name
+
+
+def migrate_legacy_dir(new: Path, old: Path) -> bool:
+    """One-time rename of the pre-rename data dir so existing jobs survive.
+
+    Only fires when the new dir does not exist yet and the old one does. Returns
+    True when the directory actually moved. A failure here is never fatal - the
+    app simply starts with a fresh data dir - but it is logged loudly.
+    """
+    new, old = Path(new), Path(old)
+    try:
+        if new == old or new.exists() or not old.is_dir():
+            return False
+        new.parent.mkdir(parents=True, exist_ok=True)
+        os.rename(str(old), str(new))
+    except OSError as exc:
+        LOG.warning("could not migrate data dir %s -> %s: %s", old, new, exc)
+        return False
+    LOG.info("migrated data dir %s -> %s", old, new)
+    return True
+
+
 def data_dir() -> Path:
-    """%LOCALAPPDATA%\\bitrebuttal (Windows), ~/Library/Application Support (macOS), ~/.local/share (Linux)."""
+    """The data dir, migrating a pre-rename ``longrebuttal`` dir on first use."""
     override = os.environ.get("BITREBUTTAL_DATA_DIR")
     if override:
         return Path(override)
-    if sys.platform == "win32":
-        base = os.environ.get("LOCALAPPDATA") or (Path.home() / "AppData" / "Local")
-        return Path(base) / APP_NAME
-    if sys.platform == "darwin":
-        return Path.home() / "Library" / "Application Support" / APP_NAME
-    return Path.home() / ".local" / "share" / APP_NAME
+    new = app_data_dir(APP_NAME)
+    migrate_legacy_dir(new, app_data_dir(LEGACY_APP_NAME))
+    return new
 
 
 def default_destination() -> Path:
@@ -43,7 +77,9 @@ def default_destination() -> Path:
 
 
 COMPLETE_MARKER = ".bitrebuttal-complete"
+LEGACY_COMPLETE_MARKER = ".longrebuttal-complete"
 PORTFILE = "portfile"
+RECENTS_CAP = 6
 
 # ---------------------------------------------------------------- atomic io
 
@@ -94,6 +130,7 @@ class FileEntry:
     attempts: int = 0              # aria2 error count for this file
     error: Optional[str] = None
     verified: bool = False
+    hashed: bool = False           # a SHA256 was actually computed and matched
     verify_read: int = 0           # bytes hashed so far (transient)
 
     def to_dict(self) -> Dict[str, Any]:
@@ -122,6 +159,7 @@ class Job:
     recoveries: int = 0
     bytes_lost: int = 0
     paused: bool = False
+    archived: bool = False         # cleared off the dashboard; still in the Library
     error: Optional[str] = None
     created_at: float = field(default_factory=time.time)
     completed_at: Optional[float] = None
@@ -163,16 +201,50 @@ def new_job_id() -> str:
 
 # ---------------------------------------------------------------- settings
 
+DEFAULT_QUIET_HOURS: Dict[str, Any] = {"enabled": False, "start": "23:00", "end": "07:30"}
+
 DEFAULT_SETTINGS: Dict[str, Any] = {
     "destination": str(default_destination()),
     "connections": 4,
     "stallSensitivity": "Normal",
+    # v2
+    "verifyChecksums": True,
+    "bandwidthCapMBs": 0,                     # 0 = uncapped, else clamped to 10..120
+    "quietHours": dict(DEFAULT_QUIET_HOURS),
+    "theme": "mauve",
+    "hfToken": "",                            # WRITE-ONLY: never echoed by the API
 }
 STALL_SENSITIVITIES = ("Low", "Normal", "High")
+THEMES = ("mauve", "graphite", "ink", "slate")
+BANDWIDTH_CAP_RANGE = (10, 120)
+QUIET_HOURS_LIMIT_MBS = 5
+
+HHMM_RE = re.compile(r"^\s*(\d{1,2}):(\d{2})\s*$")
+
+
+def normalize_hhmm(raw: Any, default: str) -> str:
+    """'23:00' / '7:5' -> 'HH:MM'; anything unparseable falls back to ``default``."""
+    m = HHMM_RE.match(str(raw or ""))
+    if not m:
+        return default
+    hh, mm = int(m.group(1)), int(m.group(2))
+    if 0 <= hh <= 23 and 0 <= mm <= 59:
+        return f"{hh:02d}:{mm:02d}"
+    return default
+
+
+def normalize_quiet_hours(raw: Any) -> Dict[str, Any]:
+    d = raw if isinstance(raw, dict) else {}
+    return {
+        "enabled": bool(d.get("enabled", DEFAULT_QUIET_HOURS["enabled"])),
+        "start": normalize_hhmm(d.get("start"), DEFAULT_QUIET_HOURS["start"]),
+        "end": normalize_hhmm(d.get("end"), DEFAULT_QUIET_HOURS["end"]),
+    }
 
 
 def normalize_settings(raw: Optional[Dict[str, Any]]) -> Dict[str, Any]:
     s = dict(DEFAULT_SETTINGS)
+    s["quietHours"] = dict(DEFAULT_QUIET_HOURS)
     if raw:
         if raw.get("destination"):
             s["destination"] = str(raw["destination"])
@@ -184,7 +256,31 @@ def normalize_settings(raw: Optional[Dict[str, Any]]) -> Dict[str, Any]:
         sens = raw.get("stallSensitivity")
         if sens in STALL_SENSITIVITIES:
             s["stallSensitivity"] = sens
+        if "verifyChecksums" in raw:
+            s["verifyChecksums"] = bool(raw["verifyChecksums"])
+        if "bandwidthCapMBs" in raw:
+            try:
+                cap = int(raw["bandwidthCapMBs"])
+            except (TypeError, ValueError):
+                cap = s["bandwidthCapMBs"]
+            lo, hi = BANDWIDTH_CAP_RANGE
+            s["bandwidthCapMBs"] = 0 if cap <= 0 else max(lo, min(hi, cap))
+        if "quietHours" in raw:
+            s["quietHours"] = normalize_quiet_hours(raw["quietHours"])
+        theme = raw.get("theme")
+        if theme in THEMES:
+            s["theme"] = theme
+        if "hfToken" in raw:
+            s["hfToken"] = str(raw["hfToken"] or "").strip()
     return s
+
+
+def push_recent(recents: List[str], value: str, cap: int = RECENTS_CAP) -> List[str]:
+    """Newest-first, de-duplicated, capped list of resolved source inputs."""
+    v = (value or "").strip()
+    if not v:
+        return list(recents)[:cap]
+    return [v] + [x for x in recents if x != v][:max(0, cap - 1)]
 
 
 # ---------------------------------------------------------------- store
@@ -200,11 +296,13 @@ class Store:
         self.settings_path = self.dir / "settings.json"
         self.portfile_path = self.dir / PORTFILE
         self._lock = threading.Lock()
+        self.recents: List[str] = self.load_recents()
 
     # -- jobs
     def save_jobs(self, jobs: List[Job]) -> None:
         payload = {"version": STATE_VERSION, "savedAt": time.time(),
-                   "jobs": [j.to_dict() for j in jobs]}
+                   "jobs": [j.to_dict() for j in jobs],
+                   "recents": list(self.recents)[:RECENTS_CAP]}
         with self._lock:
             atomic_write_json(self.state_path, payload)
 
@@ -219,6 +317,13 @@ class Store:
             except Exception:
                 continue
         return out
+
+    # -- recents (last N distinct successfully-resolved source inputs, newest first)
+    def load_recents(self) -> List[str]:
+        raw = read_json(self.state_path, default=None)
+        if not isinstance(raw, dict):
+            return []
+        return [str(x) for x in raw.get("recents", []) if isinstance(x, str)][:RECENTS_CAP]
 
     # -- settings
     def load_settings(self) -> Dict[str, Any]:

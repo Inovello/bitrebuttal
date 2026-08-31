@@ -98,11 +98,12 @@ def test_engine_end_to_end():
         assert j["etaSeconds"] == 0
         assert j["files"][0]["state"] == "done" and j["files"][0]["progress"] == 100
 
-        # -- payload shape (what server.py will hand the UI)
+        # -- payload shape (what server.py will hand the UI). v2 only ever ADDS fields,
+        # so these are superset checks; the v1 keys must all still be there.
         top = engine.status_payload()
-        assert set(top) == {"backend", "disk", "settings", "jobs"}
-        assert set(top["backend"]) == {"healthy", "label", "version", "uptime"}
-        assert set(top["disk"]) == {"path", "freeBytes", "volumeLabel"}
+        assert set(top) >= {"backend", "disk", "settings", "jobs"}
+        assert set(top["backend"]) >= {"healthy", "label", "version", "uptime"}
+        assert set(top["disk"]) >= {"path", "freeBytes", "volumeLabel"}
         assert {"destination", "connections", "stallSensitivity", "serviceInstalled"} \
             <= set(top["settings"])
 
