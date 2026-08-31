@@ -68,9 +68,10 @@ class Aria2Rpc:
     def add_uri(self, uris: Sequence[str], options: Optional[Dict[str, str]] = None) -> str:
         return self.call("aria2.addUri", list(uris), options or {})
 
-    def tell_status(self, gid: str, keys: Optional[Sequence[str]] = None) -> Dict[str, Any]:
-        return self.call("aria2.tellStatus", gid, list(keys)) if keys else \
-            self.call("aria2.tellStatus", gid)
+    def tell_status(self, gid: str, keys: Optional[Sequence[str]] = None,
+                    timeout: Optional[float] = None) -> Dict[str, Any]:
+        return self.call("aria2.tellStatus", gid, list(keys), timeout=timeout) if keys else \
+            self.call("aria2.tellStatus", gid, timeout=timeout)
 
     def tell_active(self, keys: Optional[Sequence[str]] = None,
                     timeout: Optional[float] = None) -> List[Dict[str, Any]]:
@@ -84,8 +85,8 @@ class Aria2Rpc:
             return self.call("aria2.tellStopped", offset, num, list(keys))
         return self.call("aria2.tellStopped", offset, num)
 
-    def get_global_stat(self) -> Dict[str, Any]:
-        return self.call("aria2.getGlobalStat")
+    def get_global_stat(self, timeout: Optional[float] = None) -> Dict[str, Any]:
+        return self.call("aria2.getGlobalStat", timeout=timeout)
 
     def get_servers(self, gid: str, timeout: Optional[float] = None) -> List[Dict[str, Any]]:
         """Per-server rates for one download. DISPLAY ONLY - never a health signal (5.1)."""

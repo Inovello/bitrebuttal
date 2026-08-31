@@ -7,6 +7,7 @@ behaviour - ``engine.stop()`` flushes the aria2 control files).
 
 from __future__ import annotations
 
+import sys
 import threading
 import time
 from typing import Optional
@@ -18,6 +19,32 @@ except ImportError:      # no pywebview / no webview runtime on this machine
 
 FALLBACK_MSG = ("native shell needs pywebview + a webview runtime; "
                 "falling back: run `bitrebuttal serve` for the browser UI")
+
+WINDOW_TITLE = "Bit Rebuttal"
+
+
+def _create_window(port: int):
+    window = webview.create_window(WINDOW_TITLE, f"http://127.0.0.1:{port}",
+                                   width=1440, height=920, min_size=(1200, 760))
+    if sys.platform == "win32":
+        # Dark title bar (DWMWA_USE_IMMERSIVE_DARK_MODE); without it Windows
+        # paints the default light-grey chrome over the dark UI.
+        def _darken(*_args) -> None:
+            try:
+                import ctypes
+                hwnd = ctypes.windll.user32.FindWindowW(None, WINDOW_TITLE)
+                if not hwnd:
+                    return
+                value = ctypes.c_int(1)
+                for attr in (20, 19):        # 19 on pre-20H1 builds
+                    if ctypes.windll.dwmapi.DwmSetWindowAttribute(
+                            hwnd, attr, ctypes.byref(value),
+                            ctypes.sizeof(value)) == 0:
+                        break
+            except Exception:                # cosmetic only - never fatal
+                pass
+        window.events.shown += _darken
+    return window
 
 
 def run(port: int = 7451) -> int:
@@ -41,8 +68,7 @@ def run(port: int = 7451) -> int:
     except Exception:
         already_running = False
     if already_running:
-        webview.create_window("Bit Rebuttal", f"http://127.0.0.1:{port}",
-                              width=1440, height=920, min_size=(1200, 760))
+        _create_window(port)
         webview.start()               # window onto the existing instance
         return 0
 
@@ -84,8 +110,7 @@ def run(port: int = 7451) -> int:
                   f"http://127.0.0.1:{port}/api/status within 15s")
             return 1
 
-        webview.create_window("Bit Rebuttal", f"http://127.0.0.1:{port}",
-                              width=1440, height=920, min_size=(1200, 760))
+        _create_window(port)
         webview.start()               # blocks until the window closes
     finally:
         server_.should_exit = True

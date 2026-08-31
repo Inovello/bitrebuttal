@@ -272,6 +272,7 @@ class Engine:
         self.folder_picker: Optional[Callable[[], Optional[str]]] = None  # set by create_app
         self._applied_limit: Optional[str] = None      # last max-overall-download-limit pushed
         self._connections: List[Dict[str, Any]] = []   # aria2 getServers, display only (5.1)
+        self._display_speed: Tuple[float, float] = (0.0, 0.0)  # (ts, bps) for the UI only
         self._aria2c_version: Optional[str] = None
 
     # ------------------------------------------------------------ lifecycle
@@ -783,13 +784,16 @@ class Engine:
 
     def _job_speed(self, job: Job) -> float:
         """Aggregate speed, attributed to whichever job is actually transferring."""
-        if not self._speed_samples or self._proc is None or not self._proc.alive():
+        if self._proc is None or not self._proc.alive():
             return 0.0
         if job.paused or job.status in ("COMPLETE", "FAILED", "PAUSED"):
             return 0.0
         if not any(f.state == "downloading" for f in job.files):
             return 0.0
-        return self._speed_samples[-1][1]
+        ts, bps = self._display_speed
+        if time.time() - ts <= 10.0:              # fresh 2s display sample wins
+            return bps
+        return self._speed_samples[-1][1] if self._speed_samples else 0.0
 
     # ------------------------------------------------------------ bandwidth / quiet hours
     def _apply_bandwidth(self, force: bool = False) -> None:
@@ -845,6 +849,27 @@ class Engine:
             rows = []
         self._connections = rows
 
+    def _display_refresh(self) -> None:
+        """Fresh doneBytes/speed for the UI between watchdog polls.
+
+        DISPLAY ONLY: short timeouts, errors ignored, and nothing here feeds
+        ``_speed_samples`` - the stall math stays owned by the watchdog (5.1).
+        """
+        proc = self._proc
+        if proc is None or not proc.alive():
+            self._display_speed = (0.0, 0.0)
+            return
+        try:
+            stat = proc.rpc.get_global_stat(timeout=CONNECTIONS_RPC_TIMEOUT)
+            self._display_speed = (time.time(),
+                                   float(stat.get("downloadSpeed", 0) or 0))
+        except Exception:
+            pass
+        try:
+            self._refresh_files(active_only=True, rpc_timeout=CONNECTIONS_RPC_TIMEOUT)
+        except Exception:
+            pass
+
     # ------------------------------------------------------------ supervisor
     def _supervise(self) -> None:
         last_poll = 0.0
@@ -861,6 +886,7 @@ class Engine:
                 if now - last_conn >= CONNECTIONS_REFRESH_S:
                     last_conn = now
                     self._refresh_connections()
+                    self._display_refresh()
 
                 with self.lock:
                     self._accumulate_active(dt)
@@ -1081,14 +1107,30 @@ class Engine:
         self._next_launch_at = time.time() + self.relaunch_backoff
         self.save()
 
-    def _refresh_files(self) -> None:
-        """Progress + per-file completion straight from RPC (never file sizes: falloc)."""
+    def _refresh_files(self, active_only: bool = False,
+                       rpc_timeout: Optional[float] = None) -> None:
+        """Progress + per-file completion straight from RPC (never file sizes: falloc).
+
+        ``active_only`` polls just the files currently downloading (the cheap 2s
+        display path); it falls back to a full pass when none are downloading so
+        a file handoff is picked up without waiting for the next watchdog poll.
+        """
         proc = self._proc
         if proc is None:
             return
         finished: List[Tuple[str, str]] = []
         with self.lock:
-            for gid, (job_id, name) in list(self._gids.items()):
+            items = list(self._gids.items())
+            if active_only:
+                downloading = [
+                    (gid, tag) for gid, tag in items
+                    if (jb := self.jobs.get(tag[0])) is not None
+                    and (fe := jb.file(tag[1])) is not None
+                    and fe.state == "downloading"
+                ]
+                if downloading:
+                    items = downloading
+            for gid, (job_id, name) in items:
                 job = self.jobs.get(job_id)
                 if job is None:
                     continue
@@ -1096,7 +1138,7 @@ class Engine:
                 if f is None or f.state in ("done", "verifying", "corrupt"):
                     continue
                 try:
-                    st = proc.rpc.tell_status(gid, STATUS_KEYS)
+                    st = proc.rpc.tell_status(gid, STATUS_KEYS, timeout=rpc_timeout)
                 except Aria2Error as exc:
                     LOG.debug("tellStatus(%s) failed: %s", gid, exc)
                     continue
