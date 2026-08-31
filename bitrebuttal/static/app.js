@@ -174,6 +174,7 @@
     pauseAll:      function ()        { return send('POST', 'api/jobs/pause-all'); },
     resumeAll:     function ()        { return send('POST', 'api/jobs/resume-all'); },
     reverify:      function (id)      { return send('POST', jobPath(id, '/reverify')); },
+    repair:        function (id)      { return send('POST', jobPath(id, '/repair')); },
     openFolder:    function (id)      { return send('POST', jobPath(id, '/open-folder')); },
     clearFinished: function ()        { return send('POST', 'api/jobs/clear-finished'); },
     browseDest:    function ()        { return send('POST', 'api/browse-dest'); },
@@ -385,6 +386,17 @@
         return later({ ok: true }, 200);
       },
       openFolder: function () { return later({ ok: true }, 120); },
+      repair: function (id) {
+        db.jobs = db.jobs.map(function (j) {
+          if (j.id !== id) return j;
+          var files = (j.files || []).map(function (f) {
+            return f.state === 'corrupt'
+              ? Object.assign({}, f, { state: 'queued', progress: 0 }) : f;
+          });
+          return Object.assign({}, j, { status: 'DOWNLOADING', files: files, archived: false });
+        });
+        return later({ ok: true }, 200);
+      },
       clearFinished: function () {
         db.jobs = db.jobs.map(function (j) {
           return j.status === 'COMPLETE' ? Object.assign({}, j, { archived: true }) : j;
@@ -886,6 +898,18 @@
     color(chip, d.color);
     setText(chipLabel, d.statusLabel);
 
+    // re-verify / repair actions: only meaningful on settled jobs
+    var corrupt = (target.files || []).filter(function (f) { return f.state === 'corrupt'; }).length;
+    var terminal = target.status === 'COMPLETE' || target.status === 'FAILED';
+    var rvBtn = field('detail-reverify');
+    if (rvBtn) { rvBtn.hidden = !terminal; rvBtn.dataset.jobId = target.id; }
+    var rpBtn = field('detail-repair');
+    if (rpBtn) {
+      rpBtn.hidden = !(terminal && corrupt > 0);
+      rpBtn.dataset.jobId = target.id;
+      rpBtn.textContent = 'Redownload corrupt (' + corrupt + ')';
+    }
+
     var pctEl = field('detail-pct');
     color(pctEl, d.pctColor);
     setText(pctEl, d.pct > 0 ? d.pct.toFixed(1) + '%' : '0.0%');
@@ -1115,6 +1139,8 @@
         api.openFolder(jobIdOf(el)).catch(function () {}); break;
       case 'reverify':
         api.reverify(jobIdOf(el)).then(poll).catch(poll); break;
+      case 'repair':
+        api.repair(jobIdOf(el)).then(poll).catch(poll); break;
 
       case 'confirm-dismiss':
         state.confirm = null; state.confirmError = ''; renderConfirm(); break;

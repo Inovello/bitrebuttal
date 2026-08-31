@@ -214,6 +214,50 @@ def test_jobs_carry_archived_flag(engine, client):
     assert after["library"][0]["jobId"] == job.id      # Library keeps archived jobs
 
 
+def test_repair_requeues_only_corrupt_files(engine, client, tmp_path):
+    from bitrebuttal.state import FileEntry, Job
+
+    dest = tmp_path / "repair-dest"
+    dest.mkdir()
+    good = dest / "good.bin"
+    good.write_bytes(b"x" * 10)
+    bad = dest / "bad.bin"
+    bad.write_bytes(b"y" * 4)
+    (dest / "bad.bin.aria2").write_bytes(b"ctrl")     # stale control file goes too
+
+    job = Job(id="job-rep01", name="org/repo", url="org/repo", dest=str(dest),
+              status="FAILED", completed_at=time.time(),
+              files=[FileEntry(name="good.bin", url="https://x/good.bin", size=10,
+                               state="done", verified=True, hashed=True),
+                     FileEntry(name="bad.bin", url="https://x/bad.bin", size=9,
+                               state="corrupt")])
+    with engine.lock:
+        engine.jobs[job.id] = job
+        engine._order.insert(0, job.id)
+
+    r = client.post("/api/jobs/job-rep01/repair")
+    assert r.status_code == 200, r.text
+    assert r.json() == {"ok": True}
+
+    j = [x for x in client.get("/api/status").json()["jobs"] if x["id"] == "job-rep01"][0]
+    assert j["status"] != "FAILED"                    # back in the queue, loudly alive
+    states = {f["name"]: f["state"] for f in j["files"]}
+    assert states["bad.bin"] == "queued"
+    assert states["good.bin"] == "done"               # verified files untouched
+    assert not bad.exists()                           # ONLY the corrupt file was deleted
+    assert not (dest / "bad.bin.aria2").exists()
+    assert good.exists()
+
+    # a job with nothing corrupt refuses politely
+    r2 = client.post("/api/jobs/job-rep01/repair")
+    assert 400 <= r2.status_code < 500
+    assert isinstance(r2.json()["error"], str) and r2.json()["error"]
+
+    # unknown id -> the usual error shape
+    r3 = client.post("/api/jobs/nope/repair")
+    assert 400 <= r3.status_code < 500
+
+
 def test_static_ui_served_at_root(client):
     r = client.get("/")
     assert r.status_code == 200

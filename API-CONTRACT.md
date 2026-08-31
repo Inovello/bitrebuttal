@@ -146,3 +146,13 @@ the `library` array (archived or not).
   by "slow" thresholds beyond neutral styling.
 - Dropped from the design, deliberately: queue drag-reordering, "Sort: priority", "Skip verify",
   "Export manifest", "Verify all" (Library has per-item Re-verify).
+
+## v2.1: job repair (added 2026-08-31)
+
+- `POST /api/jobs/{id}/repair` — for a COMPLETE or FAILED job with `corrupt` files: deletes ONLY the
+  corrupt files (and their `.aria2` controls) from disk, resets them to `queued`, clears the job's
+  failure, and returns it to the supervisor queue (relaunch re-resolves URLs; verified files are
+  untouched and not re-downloaded). 200 `{"ok": true}`; 4xx `{"error": ...}` when nothing is corrupt
+  or the id is unknown. This deletion is user-invoked — the "verification never deletes" rule applies
+  to the automatic pass, not to an explicit repair request.
+- The detail view surfaces `Re-verify` (existing endpoint) and `Redownload corrupt (N)` on settled jobs.
