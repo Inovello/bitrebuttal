@@ -325,9 +325,17 @@ class Engine:
         n = len(files)
         hashed = sum(1 for f in files if f.sha256)
         kinds = {Path(f.name).suffix.lstrip(".").lower() for f in files if Path(f.name).suffix}
-        kind = next(iter(kinds)) if len(kinds) == 1 else "files"
-        tail = "sha256 available" if hashed == n and n else "size-only verification"
-        return f"{n} file{'s' if n != 1 else ''} · {kind} · {tail}"
+        if n and hashed == n:
+            tail = "sha256 available"
+        elif hashed:
+            tail = f"sha256 for {hashed}/{n}"
+        else:
+            tail = "size-only verification"
+        parts = [f"{n} file{'s' if n != 1 else ''}"]
+        if len(kinds) == 1:
+            parts.append(next(iter(kinds)))
+        parts.append(tail)
+        return " · ".join(parts)
 
     def pause_job(self, job_id: str) -> Dict[str, Any]:
         with self.lock:
