@@ -211,9 +211,32 @@ def limit_option(mbs: int) -> str:
     return "0" if not mbs else f"{int(mbs)}M"
 
 
+MAC_ARIA2_PATHS = ("/opt/homebrew/bin/aria2c",    # Homebrew, Apple Silicon
+                   "/usr/local/bin/aria2c",       # Homebrew, Intel
+                   "/opt/local/bin/aria2c")       # MacPorts
+
+
+def resolve_aria2c(candidate: str = "aria2c") -> str:
+    """Absolute path of the aria2c binary, or "" when none can be found.
+
+    PATH lookup first. On macOS a Finder-launched .app runs with launchd's
+    minimal PATH (/usr/bin:/bin:/usr/sbin:/sbin), which does not include
+    Homebrew's bin dir - a brew-installed aria2 is invisible to `which` there,
+    so the well-known install locations are checked directly before giving up.
+    """
+    exe = shutil.which(candidate)
+    if exe:
+        return exe
+    if sys.platform == "darwin" and candidate == "aria2c":
+        for p in MAC_ARIA2_PATHS:
+            if os.path.isfile(p) and os.access(p, os.X_OK):
+                return p
+    return ""
+
+
 def aria2c_version(aria2_path: str = "aria2c") -> str:
     """`aria2c --version` -> "1.37.0". Empty string when aria2c is not installed."""
-    exe = shutil.which(aria2_path)
+    exe = resolve_aria2c(aria2_path)
     if not exe:
         return ""
     kwargs: Dict[str, Any] = {}
@@ -281,12 +304,14 @@ class Engine:
 
     # ------------------------------------------------------------ lifecycle
     def preflight(self) -> str:
-        exe = shutil.which(self.aria2_path)
+        exe = resolve_aria2c(self.aria2_path)
         if not exe:
             hint = ("winget install aria2.aria2" if sys.platform == "win32"
-                    else "brew install aria2" if sys.platform == "darwin"
+                    else "brew install aria2 (get Homebrew first: https://brew.sh)"
+                    if sys.platform == "darwin"
                     else "sudo apt install aria2")
             raise EngineError(f"aria2c not found on PATH. Install it: {hint}")
+        self.aria2_path = exe      # pin the absolute path: spawn + version reuse it
         return exe
 
     def start(self, port: Optional[int] = None) -> None:
