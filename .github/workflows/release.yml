@@ -14,6 +14,8 @@ permissions:
 jobs:
   build:
     strategy:
+      # One platform's failure must not cancel the other legs' builds.
+      fail-fast: false
       matrix:
         include:
           - os: windows-latest
@@ -67,13 +69,42 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          brew install aria2 dylibbundler
+          trap 'echo "::error::vendor(macOS) failed at line $LINENO: $BASH_COMMAND"' ERR
+          brew install aria2
           mkdir -p vendor
-          cp "$(brew --prefix)/bin/aria2c" vendor/
-          dylibbundler -od -b -x vendor/aria2c -d vendor/ -p @executable_path/
-          for f in vendor/aria2c vendor/*.dylib; do codesign -f -s - "$f"; done
+          cp "$(brew --prefix)/bin/aria2c" vendor/aria2c
+          chmod +w vendor/aria2c
+
+          # Non-system (Homebrew/MacPorts-prefix) dylib references of a Mach-O.
+          brew_deps() { otool -L "$1" | awk '$1 ~ /^\/(opt\/homebrew|usr\/local)\// {print $1}'; }
+
+          # Copy the transitive brew dylibs next to aria2c (graph is tiny:
+          # sqlite, openssl x2, libssh2, c-ares, libintl - 4 passes reach a
+          # fixed point with room to spare).
+          for _ in 1 2 3 4; do
+            for f in vendor/*; do
+              for dep in $(brew_deps "$f"); do
+                base=$(basename "$dep")
+                [ -e "vendor/$base" ] || { cp "$dep" "vendor/$base"; chmod +w "vendor/$base"; }
+              done
+            done
+          done
+
+          # Rewrite every brew reference to @executable_path (all files sit in
+          # the same dir as the aria2c the app spawns) and ad-hoc re-sign -
+          # editing load commands invalidates the arm64 signature.
+          for f in vendor/*; do
+            for dep in $(brew_deps "$f"); do
+              install_name_tool -change "$dep" "@executable_path/$(basename "$dep")" "$f"
+            done
+            case "$f" in *.dylib) install_name_tool -id "@executable_path/$(basename "$f")" "$f" ;; esac
+            codesign -f -s - "$f"
+          done
+
+          # Prove the vendored copy stands alone before it ships.
           brew uninstall aria2
           vendor/aria2c --version
+          echo "::notice::vendored ok: $(vendor/aria2c --version | head -1); files: $(ls vendor/ | tr '\n' ' ')"
 
       - name: Build with PyInstaller
         run: pyinstaller --clean --noconfirm bitrebuttal.spec
