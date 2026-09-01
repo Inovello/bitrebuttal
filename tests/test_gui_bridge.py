@@ -45,4 +45,10 @@ def test_window_api_still_controls_its_window():
     api.toggle_maximize()
     api.toggle_maximize()
     api.close()
+    # close() defers destroy so pywebview's bridge round-trip can finish
+    # before the window dies (v1.1.1: stranded evaluate_js = shutdown hang).
+    import time
+    deadline = time.time() + 3.0
+    while "destroy" not in calls and time.time() < deadline:
+        time.sleep(0.05)
     assert calls == ["min", "max", "restore", "destroy"]

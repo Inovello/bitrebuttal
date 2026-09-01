@@ -8,6 +8,7 @@ behaviour - ``engine.stop()`` flushes the aria2 control files).
 from __future__ import annotations
 
 import html
+import os
 import subprocess
 import sys
 import threading
@@ -136,7 +137,14 @@ class _WindowApi:
 
     def close(self) -> None:
         if self._window is not None:
-            self._window.destroy()
+            # Deferred: pywebview's bridge evaluates a JS callback AFTER this
+            # method returns. Destroying the window first strands that
+            # evaluate_js on a never-signalled wait inside a non-daemon thread,
+            # and a window-less process that cannot exit is a Dock/taskbar
+            # "hang" (observed as the macOS force-quit report in v1.1.0).
+            t = threading.Timer(0.3, self._window.destroy)
+            t.daemon = True
+            t.start()
 
 
 def _create_window(port: int):
@@ -145,7 +153,8 @@ def _create_window(port: int):
     api = _WindowApi()
     window = webview.create_window(WINDOW_TITLE, f"http://127.0.0.1:{port}",
                                    width=1440, height=920, min_size=(1200, 760),
-                                   frameless=True, easy_drag=False, js_api=api)
+                                   frameless=True, easy_drag=False, js_api=api,
+                                   background_color="#16181d")  # dark pre-paint, no flash
     api._window = window
     return window
 
@@ -285,4 +294,10 @@ def run(port: int = 7451) -> int:
         server_.should_exit = True
         thread.join(timeout=10)
         engine.stop()
+    if getattr(sys, "frozen", False):
+        # Cleanup is complete: state saved, aria2 control files flushed. In the
+        # frozen app, hard-exit so a thread stranded by window teardown (e.g. a
+        # pywebview bridge thread mid evaluate_js) can never keep a window-less
+        # process "running" in the Dock/taskbar - that reads as a hang.
+        os._exit(0)
     return 0

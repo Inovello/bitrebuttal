@@ -95,28 +95,52 @@ else:
         icon=icon_file,
     )
 
-    # Windowed native shell (Windows + macOS).
+    # Windowed native shell. Windows stays ONEFILE (one downloadable .exe);
+    # macOS is ONEDIR wrapped in the .app - a onefile binary inside a bundle
+    # re-extracts ~40MB on every launch and gets re-scanned by XProtect each
+    # time, which made v1.1.0 take ages to open (and .apps ship zipped anyway,
+    # so onedir costs the user nothing).
     a_gui = _analysis('packaging/pyi_entry_gui.py')
     pyz_gui = PYZ(a_gui.pure)
-    exe_gui = EXE(
-        pyz_gui,
-        a_gui.scripts,
-        a_gui.binaries,
-        a_gui.datas,
-        [],
-        name='BitRebuttal',
-        debug=False,
-        strip=False,
-        upx=False,
-        console=False,
-        icon=icon_file,
-    )
 
     if sys.platform == 'darwin':
-        app = BUNDLE(
+        exe_gui = EXE(
+            pyz_gui,
+            a_gui.scripts,
+            [],
+            exclude_binaries=True,
+            name='BitRebuttal',
+            debug=False,
+            strip=False,
+            upx=False,
+            console=False,
+        )
+        coll_gui = COLLECT(
             exe_gui,
+            a_gui.binaries,
+            a_gui.datas,
+            strip=False,
+            upx=False,
+            name='BitRebuttal',
+        )
+        app = BUNDLE(
+            coll_gui,
             name='BitRebuttal.app',
             icon='packaging/icon.icns',
             bundle_identifier='com.bitrebuttal.app',
             info_plist={'NSHighResolutionCapable': True},
+        )
+    else:
+        exe_gui = EXE(
+            pyz_gui,
+            a_gui.scripts,
+            a_gui.binaries,
+            a_gui.datas,
+            [],
+            name='BitRebuttal',
+            debug=False,
+            strip=False,
+            upx=False,
+            console=False,
+            icon=icon_file,
         )
