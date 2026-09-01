@@ -154,7 +154,8 @@ def _create_window(port: int):
     window = webview.create_window(WINDOW_TITLE, f"http://127.0.0.1:{port}",
                                    width=1440, height=920, min_size=(1200, 760),
                                    frameless=True, easy_drag=False, js_api=api,
-                                   background_color="#16181d")  # dark pre-paint, no flash
+                                   background_color="#16181d",  # dark pre-paint, no flash
+                                   text_select=True)  # error banners must be copyable
     api._window = window
     return window
 

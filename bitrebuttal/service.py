@@ -63,64 +63,100 @@ def _run(argv: List[str]) -> subprocess.CompletedProcess:
 
 
 # ---------------------------------------------------------------- Windows
+#
+# Autostart lives in the per-user HKCU ...\CurrentVersion\Run value: the same
+# at-logon semantics as a Task Scheduler ONLOGON task, but writable with NO
+# elevation. schtasks /SC ONLOGON needs admin (v1.1.1's Install button died
+# with "Access is denied" - and running the app elevated does not help, since
+# the elevated relaunch just attaches a window to the already-running
+# unelevated instance). Pre-1.1.2 installs that did create the scheduled task
+# are still detected and cleaned up.
+
+RUN_KEY = r"Software\Microsoft\Windows\CurrentVersion\Run"
+RUN_VALUE = TASK_NAME
 
 
-def _schtasks() -> Optional[str]:
-    return shutil.which("schtasks")
+def _run_key_set(cmd: str) -> None:
+    import winreg
+    with winreg.CreateKeyEx(winreg.HKEY_CURRENT_USER, RUN_KEY, 0,
+                            winreg.KEY_SET_VALUE) as key:
+        winreg.SetValueEx(key, RUN_VALUE, 0, winreg.REG_SZ, cmd)
 
 
-def _task_run_string(port: int) -> str:
-    """The /TR value. Quote the interpreter only when it needs it - schtasks mangles
-    nested quotes, and the common install has no spaces in the path."""
+def _run_key_get() -> Optional[str]:
+    import winreg
+    try:
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, RUN_KEY) as key:
+            value, kind = winreg.QueryValueEx(key, RUN_VALUE)
+            return str(value) if kind == winreg.REG_SZ else None
+    except OSError:
+        return None
+
+
+def _run_key_delete() -> bool:
+    import winreg
+    try:
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, RUN_KEY, 0,
+                            winreg.KEY_SET_VALUE) as key:
+            winreg.DeleteValue(key, RUN_VALUE)
+            return True
+    except OSError:
+        return False
+
+
+def _autostart_cmd(port: int) -> str:
     exe, *rest = _launch_cmd(port)
-    exe = f'\\"{exe}\\"' if " " in exe else exe
-    return " ".join([exe, *rest])
+    return " ".join([f'"{exe}"', *rest])
+
+
+def _delete_legacy_task() -> None:
+    """Best-effort removal of the pre-1.1.2 scheduled task (needed admin)."""
+    exe = shutil.which("schtasks")
+    if exe:
+        _run([exe, "/Delete", "/TN", TASK_NAME, "/F"])
+
+
+def _legacy_task_present() -> bool:
+    exe = shutil.which("schtasks")
+    if not exe:
+        return False
+    return _run([exe, "/Query", "/TN", TASK_NAME]).returncode == 0
 
 
 def _win_install(port: int) -> Dict[str, Any]:
-    exe = _schtasks()
-    tr = _task_run_string(port)
-    manual = f'schtasks /Create /SC ONLOGON /TN {TASK_NAME} /TR "{tr}" /F'
-    if not exe:
-        return {"installed": False, "error": "schtasks.exe not found on PATH.",
-                "command": manual}
-    # ONLOGON needs no admin rights (unlike ONSTART).
-    res = _run([exe, "/Create", "/SC", "ONLOGON", "/TN", TASK_NAME, "/TR", tr, "/F"])
-    if res.returncode != 0:
+    cmd = _autostart_cmd(port)
+    manual = (f'reg add "HKCU\\{RUN_KEY}" /v {RUN_VALUE} /t REG_SZ '
+              f'/d "{cmd.replace(chr(34), chr(92) + chr(34))}" /f')
+    try:
+        _run_key_set(cmd)
+    except OSError as exc:
         return {"installed": False,
-                "error": (res.stderr or res.stdout or "schtasks failed").strip(),
+                "error": f"Could not write the autostart registry value: {exc}",
                 "command": manual}
-    check = _run([exe, "/Query", "/TN", TASK_NAME, "/FO", "LIST", "/V"])
-    if "bitrebuttal" not in (check.stdout or "").lower():
+    if _run_key_get() != cmd:
         return {"installed": False,
-                "error": "schtasks accepted the task but did not record the command line "
-                         "(quoting of the interpreter path). Create it manually:",
+                "error": "Autostart value did not read back; write it manually:",
                 "command": manual}
+    _delete_legacy_task()          # a leftover ONLOGON task would double-start
     return {"installed": True,
-            "message": f"Scheduled task '{TASK_NAME}' created (runs at logon).",
-            "command": manual}
+            "message": "Autostart entry written (starts at logon, no admin needed)."}
 
 
 def _win_uninstall() -> Dict[str, Any]:
-    exe = _schtasks()
-    manual = f"schtasks /Delete /TN {TASK_NAME} /F"
-    if not exe:
-        return {"installed": False, "error": "schtasks.exe not found on PATH.", "command": manual}
-    res = _run([exe, "/Delete", "/TN", TASK_NAME, "/F"])
-    if res.returncode != 0 and "cannot find" not in (res.stderr + res.stdout).lower():
-        return {"installed": True, "error": (res.stderr or res.stdout).strip(), "command": manual}
-    return {"installed": False, "message": f"Scheduled task '{TASK_NAME}' removed."}
+    _run_key_delete()
+    _delete_legacy_task()
+    return {"installed": False, "message": "Autostart entry removed."}
 
 
 def _win_status() -> Dict[str, Any]:
-    exe = _schtasks()
-    if not exe:
-        return {"installed": False, "detail": "schtasks.exe not found on PATH."}
-    res = _run([exe, "/Query", "/TN", TASK_NAME])
-    if res.returncode != 0:
-        return {"installed": False, "detail": f"No scheduled task '{TASK_NAME}'."}
-    return {"installed": True,
-            "detail": (res.stdout or "").strip().splitlines()[-1] if res.stdout else "installed"}
+    value = _run_key_get()
+    if value:
+        return {"installed": True, "detail": f"HKCU Run entry: {value}"}
+    if _legacy_task_present():
+        return {"installed": True,
+                "detail": f"legacy scheduled task '{TASK_NAME}' (pre-1.1.2); "
+                          "Remove + Install migrates it to the admin-free entry."}
+    return {"installed": False, "detail": "No autostart entry."}
 
 
 # ---------------------------------------------------------------- Linux
