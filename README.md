@@ -18,6 +18,8 @@ The design is not theoretical: the prototype that proved it downloaded 169.17 GB
 
 Three layers, each catching what the one below it misses. The outermost layer is an OS service: it keeps the whole thing alive across crashes and reboots, and on startup it finds unfinished jobs and resumes them automatically. Inside it, the supervisor owns exactly one aria2c child process and makes every restart decision. A watchdog polls aria2's RPC every 60 seconds and watches aggregate throughput, never per-connection speed. If the aggregate stays below an adaptive threshold (a fraction of the trailing median, floored at 10 KB/s) for 12 consecutive polls, the watchdog kills aria2c and the supervisor relaunches it. The watchdog also detects when the queue has drained, because aria2 in RPC mode never exits on its own. When aria2c exits for any reason, the supervisor verifies what finished, waits 15 seconds, and relaunches it with the original URLs so signed CDNs re-resolve fresh. That restart-to-re-resolve is why repeated restarts cost zero progress. aria2c itself does the transfer work: multiple connections per file, infinite retries, and `.aria2` control files that make every resume byte-exact. When every file is done, Bit Rebuttal checks size and SHA256 before the job is marked complete.
 
+<img width="1414" height="870" alt="image" src="https://github.com/user-attachments/assets/864c1eb6-bf2f-4bbc-9ea8-ab9becb3f991" />
+
 ## Install
 
 ### Option 1 - download the app
