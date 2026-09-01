@@ -24,6 +24,11 @@ class FakeReg:
                             lambda: self.values.get(service.RUN_VALUE))
         monkeypatch.setattr(service, "_run_key_delete",
                             lambda: self.values.pop(service.RUN_VALUE, None) is not None)
+        # The CI runners for Linux/macOS have no schtasks; these tests exercise
+        # the Windows logic, so pretend it is present everywhere.
+        monkeypatch.setattr(service.shutil, "which",
+                            lambda name: "C:\\Windows\\System32\\schtasks.exe"
+                            if name == "schtasks" else None)
 
 
 class RecordingRun:
